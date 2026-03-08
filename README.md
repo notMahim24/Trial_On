@@ -1,5 +1,7 @@
 # ÉLÉGANCE - Classic Clothing & Virtual Try-On
 
+![Virtual Try-On UI Screenshot](./ss1)
+
 A lightweight, premium e-commerce storefront featuring a "Virtual Try-On" integration powered by a Digital Ocean ComfyUI GPU utilizing the IDM-VTON model. 
 
 Built with Next.js (App Router) and Tailwind CSS. The unified Next.js API route architecture safely handles the image processing pipeline between the user and the remote GPU server, hiding the server IPs from the client browser.
@@ -51,3 +53,6 @@ This Next.js application requires a specific ComfyUI workflow to process IDM-VTO
 - **Node 29**: GroundingDino Segmenter (Receives dynamic mask prompt, e.g., "shirt", "dress", "coat" based on UI selection)
 - **Node 35**: IDM-VTON Core Execution
 - **Node 21**: Output Saved Image
+
+## License
+This project is licensed under the [MIT License](LICENSE).
