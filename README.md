@@ -1,6 +1,6 @@
 # ÉLÉGANCE - Classic Clothing & Virtual Try-On
 
-![Virtual Try-On UI Screenshot](./ss1)
+![Virtual Try-On UI Screenshot](./ss1.png)
 
 A lightweight, premium e-commerce storefront featuring a "Virtual Try-On" integration powered by a Digital Ocean ComfyUI GPU utilizing the IDM-VTON model. 
 
