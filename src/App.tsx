@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ShoppingBag, 
-  User, 
-  Search, 
-  Menu, 
-  X, 
-  ArrowRight, 
-  Plus, 
-  Minus, 
-  Trash2, 
+import {
+  ShoppingBag,
+  User,
+  Search,
+  Menu,
+  X,
+  ArrowRight,
+  Plus,
+  Minus,
+  Trash2,
   Sparkles,
   Send,
   Loader2,
@@ -49,6 +49,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { cn } from './lib/utils';
+import TryOnModal from './components/TryOnModal';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
@@ -74,8 +75,8 @@ const TryOnCamera = ({ product }: { product: Product }) => {
   useEffect(() => {
     async function setupCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } 
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -108,24 +109,24 @@ const TryOnCamera = ({ product }: { product: Product }) => {
 
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-      <video 
-        ref={videoRef} 
-        autoPlay 
-        playsInline 
-        muted 
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
         className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
       />
       <div className="absolute inset-0 bg-black/20 pointer-events-none" />
-      
+
       {/* Product Overlay Simulation */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         className="relative z-10 w-full max-w-lg pointer-events-none mix-blend-multiply opacity-80"
       >
-        <img 
-          src={product.image} 
-          alt="Try on overlay" 
+        <img
+          src={product.image}
+          alt="Try on overlay"
           className="w-full h-auto drop-shadow-2xl"
           referrerPolicy="no-referrer"
         />
@@ -190,8 +191,8 @@ const ProductImage: React.FC<{ src: string; alt: string; className?: string }> =
           <div className="w-8 h-8 border-2 border-black/10 border-t-black/40 rounded-full animate-spin" />
         </div>
       )}
-      <img 
-        src={src} 
+      <img
+        src={src}
         alt={alt}
         onLoad={() => setIsLoaded(true)}
         className={cn(
@@ -239,14 +240,14 @@ function MainApp() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [addingToCartId, setAddingToCartId] = useState<number | null>(null);
-  const [notification, setNotification] = useState<{message: string, type: 'success' | 'info'} | null>(null);
-  
+  const [notification, setNotification] = useState<{ message: string, type: 'success' | 'info' } | null>(null);
+
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { role: 'model', text: "Hello! I'm your personal Vogue & Verve stylist. How can I help you elevate your look today?" }
   ]);
   const [userInput, setUserInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const productsRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLElement>(null);
@@ -279,10 +280,10 @@ function MainApp() {
     e.stopPropagation();
     const newMuted = !isMuted;
     setIsMuted(newMuted);
-    
+
     if (rainAudioRef.current) {
       if (!newMuted && window.scrollY === 0 && !selectedProduct) {
-        rainAudioRef.current.play().catch(() => {});
+        rainAudioRef.current.play().catch(() => { });
       } else {
         rainAudioRef.current.pause();
       }
@@ -291,7 +292,7 @@ function MainApp() {
     if (videoRef.current) {
       videoRef.current.muted = newMuted;
       if (!newMuted) {
-        videoRef.current.play().catch(() => {});
+        videoRef.current.play().catch(() => { });
       }
     }
   };
@@ -300,12 +301,12 @@ function MainApp() {
     const handleScroll = () => {
       const scrolled = window.scrollY > 50;
       setIsScrolled(scrolled);
-      
+
       if (rainAudioRef.current) {
         if (window.scrollY > 100 || selectedProduct || isMuted) {
           rainAudioRef.current.pause();
         } else if (window.scrollY === 0 && !isMuted && !selectedProduct) {
-          rainAudioRef.current.play().catch(() => {});
+          rainAudioRef.current.play().catch(() => { });
         }
       }
 
@@ -314,7 +315,7 @@ function MainApp() {
           videoRef.current.muted = true;
         } else if (window.scrollY < 100 && !isMuted && !selectedProduct) {
           videoRef.current.muted = false;
-          videoRef.current.play().catch(() => {});
+          videoRef.current.play().catch(() => { });
         }
       }
     };
@@ -327,10 +328,10 @@ function MainApp() {
     fetch('/api/products')
       .then(res => res.json())
       .then(data => {
-        const availableProducts = data.filter((p: Product) => 
-          p.is_available === 1 || 
-          p.is_available === true || 
-          p.is_available === undefined || 
+        const availableProducts = data.filter((p: Product) =>
+          p.is_available === 1 ||
+          p.is_available === true ||
+          p.is_available === undefined ||
           p.is_available === null
         );
         setProducts(availableProducts);
@@ -342,16 +343,16 @@ function MainApp() {
 
   useEffect(() => {
     let result = products;
-    
+
     // Category Filter
     if (activeCategory !== 'All') {
       result = result.filter(p => p.category === activeCategory);
     }
-    
+
     // Search Filter
     if (searchQuery) {
-      result = result.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      result = result.filter(p =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
@@ -389,7 +390,7 @@ function MainApp() {
     setAddingToCartId(product.id);
     // Simulate network delay for better user feedback
     await new Promise(resolve => setTimeout(resolve, 800));
-    
+
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
@@ -454,7 +455,7 @@ function MainApp() {
 
   const handleSendMessage = async () => {
     if (!userInput.trim()) return;
-    
+
     const newMessages: ChatMessage[] = [...chatMessages, { role: 'user', text: userInput }];
     setChatMessages(newMessages);
     const currentInput = userInput;
@@ -465,7 +466,7 @@ function MainApp() {
     if (!process.env.GEMINI_API_KEY) {
       setTimeout(() => {
         let mockResponse = "That's a great choice! Our collection is designed for timeless elegance. Would you like to see more details about our latest arrivals?";
-        
+
         const input = currentInput.toLowerCase();
         if (input.includes('price') || input.includes('cost')) {
           mockResponse = "Our premium pieces range from $89 to $250. Each item is crafted with the finest materials like silk, cashmere, and Italian wool.";
@@ -489,7 +490,7 @@ function MainApp() {
           systemInstruction: "You are a high-end fashion stylist for 'Vogue & Verve', a luxury ecommerce brand. Your tone is sophisticated, helpful, and trend-aware. Recommend products from the catalog if relevant. The catalog includes: Midnight Velvet Blazer ($249.99), Silk Slip Dress ($189.00), Cashmere Turtleneck ($159.50), Tailored Wool Trousers ($129.00), Leather Chelsea Boots ($210.00), Oversized Linen Shirt ($89.00)."
         }
       });
-      
+
       setChatMessages([...newMessages, { role: 'model', text: response.text || "I'm sorry, I couldn't process that. How else can I assist your style journey?" }]);
     } catch (error) {
       console.error("Gemini Error:", error);
@@ -505,7 +506,7 @@ function MainApp() {
       {/* Notification Toast */}
       <AnimatePresence>
         {notification && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
@@ -528,18 +529,18 @@ function MainApp() {
               <Menu size={24} />
             </button>
             <div className="hidden md:block relative">
-              <button 
+              <button
                 onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
                 className={cn(
                   "flex items-center gap-2 px-6 py-2 border rounded-full text-[10px] uppercase tracking-[0.3em] font-bold transition-all",
-                  !isScrolled && !selectedProduct 
-                    ? "text-white border-white/20 hover:bg-white/10" 
+                  !isScrolled && !selectedProduct
+                    ? "text-white border-white/20 hover:bg-white/10"
                     : "text-black border-black/10 hover:bg-black/5"
                 )}
               >
                 Menu <ChevronDown size={14} className={cn("transition-transform", isNavMenuOpen && "rotate-180")} />
               </button>
-              
+
               <AnimatePresence>
                 {isNavMenuOpen && (
                   <motion.div
@@ -557,9 +558,9 @@ function MainApp() {
               </AnimatePresence>
             </div>
           </div>
-          
-          <h1 
-            onClick={() => { setSelectedProduct(null); window.scrollTo({top: 0, behavior: 'smooth'}); }} 
+
+          <h1
+            onClick={() => { setSelectedProduct(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className={cn(
               "text-sm sm:text-xl md:text-3xl font-serif font-bold tracking-[0.1em] sm:tracking-[0.15em] cursor-pointer absolute left-1/2 -translate-x-1/2 transition-colors duration-700 whitespace-nowrap",
               !isScrolled && !selectedProduct ? "text-white" : "text-black"
@@ -567,12 +568,12 @@ function MainApp() {
           >
             VOGUE & VERVE
           </h1>
-          
+
           <div className={cn("flex items-center gap-2 sm:gap-4 md:gap-8", !isScrolled && !selectedProduct ? "text-white" : "text-black")}>
             <div className={`hidden lg:flex items-center transition-all duration-300 ${isSearchOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}>
-              <input 
-                type="text" 
-                placeholder="Search..." 
+              <input
+                type="text"
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={cn(
@@ -581,7 +582,7 @@ function MainApp() {
                 )}
               />
             </div>
-            <button 
+            <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className="nav-link flex items-center gap-2"
             >
@@ -601,7 +602,7 @@ function MainApp() {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -628,7 +629,7 @@ function MainApp() {
                     "Watches",
                     "Trunks, Travel and Home"
                   ].map((cat) => (
-                    <button 
+                    <button
                       key={cat}
                       className={`w-full text-left text-2xl font-serif tracking-wide hover:opacity-50 transition-opacity flex items-center justify-between group ${cat === 'Men' ? 'border-b border-black pb-2' : ''}`}
                     >
@@ -642,9 +643,9 @@ function MainApp() {
                 <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-12 border-l border-black/5 pl-12">
                   <div className="space-y-12">
                     <div className="aspect-[16/9] bg-brand-muted overflow-hidden">
-                      <img 
-                        src="https://images.unsplash.com/photo-1549037173-e3b717902c57?auto=format&fit=crop&q=80&w=1200" 
-                        alt="LV Trunk Edition" 
+                      <img
+                        src="https://images.unsplash.com/photo-1549037173-e3b717902c57?auto=format&fit=crop&q=80&w=1200"
+                        alt="LV Trunk Edition"
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -661,7 +662,7 @@ function MainApp() {
                       "Accessories",
                       "Fashion Jewelry"
                     ].map((sub) => (
-                      <button 
+                      <button
                         key={sub}
                         onClick={() => { setActiveCategory('All'); scrollToProducts(); setIsMobileMenuOpen(false); }}
                         className="w-full text-left text-lg font-serif hover:opacity-50 transition-opacity"
@@ -681,14 +682,14 @@ function MainApp() {
       <AnimatePresence>
         {isProfileOpen && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => { setIsProfileOpen(false); setProfileView('main'); }}
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110]"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -702,11 +703,11 @@ function MainApp() {
                     </button>
                   )}
                   <h3 className="text-2xl font-serif italic">
-                    {profileView === 'main' ? 'My Account' : 
-                     profileView === 'orders' ? 'My Orders' :
-                     profileView === 'wishlist' ? 'My Wishlist' :
-                     profileView === 'shipping' ? 'Shipping Address' :
-                     profileView === 'payment' ? 'Payment Methods' : 'Settings'}
+                    {profileView === 'main' ? 'My Account' :
+                      profileView === 'orders' ? 'My Orders' :
+                        profileView === 'wishlist' ? 'My Wishlist' :
+                          profileView === 'shipping' ? 'Shipping Address' :
+                            profileView === 'payment' ? 'Payment Methods' : 'Settings'}
                   </h3>
                 </div>
                 <button onClick={() => { setIsProfileOpen(false); setProfileView('main'); }} className="p-2 hover:bg-black/5">
@@ -727,15 +728,15 @@ function MainApp() {
                           <p className="text-xs opacity-50 uppercase tracking-widest">Sign in to manage your orders and profile</p>
                         </div>
                         <div className="flex flex-col gap-4">
-                          <Link 
-                            to="/login" 
+                          <Link
+                            to="/login"
                             onClick={() => setIsProfileOpen(false)}
                             className="w-full py-5 bg-black text-white text-xs uppercase tracking-[0.3em] font-bold hover:opacity-80 transition-opacity"
                           >
                             Sign In
                           </Link>
-                          <Link 
-                            to="/signup" 
+                          <Link
+                            to="/signup"
                             onClick={() => setIsProfileOpen(false)}
                             className="w-full py-5 border border-black text-black text-xs uppercase tracking-[0.3em] font-bold hover:bg-black hover:text-white transition-all"
                           >
@@ -763,7 +764,7 @@ function MainApp() {
                             { id: 'payment', label: 'Payment Methods' },
                             { id: 'settings', label: 'Settings' }
                           ].map((item) => (
-                            <button 
+                            <button
                               key={item.id}
                               onClick={() => setProfileView(item.id as any)}
                               className="w-full text-left py-5 text-xs uppercase tracking-[0.2em] font-bold border-b border-black/5 hover:pl-4 transition-all flex items-center justify-between group"
@@ -774,7 +775,7 @@ function MainApp() {
                           ))}
                         </div>
 
-                        <button 
+                        <button
                           onClick={() => {
                             logout();
                             showNotification("Logged out successfully", "info");
@@ -787,7 +788,7 @@ function MainApp() {
 
                         {isAdmin && (
                           <div className="pt-8 border-t border-black/5">
-                            <Link 
+                            <Link
                               to="/admin/dashboard"
                               onClick={() => setIsProfileOpen(false)}
                               className="flex items-center justify-center gap-3 w-full py-4 border border-admin-gold text-admin-gold text-[10px] uppercase tracking-[0.4em] font-bold hover:bg-admin-gold hover:text-white transition-all"
@@ -938,26 +939,26 @@ function MainApp() {
             >
               {/* Hero Section - Full Screen Cinematic Video */}
               <section className="relative h-screen overflow-hidden">
-                <video 
+                <video
                   ref={videoRef}
-                  autoPlay 
-                  loop 
+                  autoPlay
+                  loop
                   muted={isMuted}
                   playsInline
                   className="absolute inset-0 w-full h-full object-cover scale-105"
                 >
                   <source src="https://player.vimeo.com/external/517089491.hd.mp4?s=756387063499f575796f69986326d95368366479&profile_id=175" type="video/mp4" />
                 </video>
-                
+
                 {/* Mute Toggle */}
-                <button 
+                <button
                   onClick={toggleMute}
                   className="absolute bottom-12 right-12 z-20 p-4 border border-white/20 rounded-full text-white hover:bg-white hover:text-black transition-all duration-500"
                 >
                   {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
                 </button>
                 <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white">
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 50 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
@@ -965,7 +966,7 @@ function MainApp() {
                   >
                     <span className="uppercase tracking-[0.6em] text-[10px] font-bold mb-8 block opacity-80">Spring Summer 2026</span>
                     <h2 className="text-5xl md:text-[10rem] font-serif mb-12 tracking-tighter leading-[0.85] font-light">
-                      The New <br/>
+                      The New <br />
                       <span className="italic font-normal">Elegance</span>
                     </h2>
                     <div className="flex flex-col md:flex-row gap-6 justify-center items-center mt-12">
@@ -974,7 +975,7 @@ function MainApp() {
                 </div>
 
                 {/* Scroll Indicator */}
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 2, duration: 1 }}
@@ -987,7 +988,7 @@ function MainApp() {
 
               {/* Maison Highlight - Split Layout */}
               <section className="grid grid-cols-1 md:grid-cols-2 h-screen">
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
@@ -1002,8 +1003,8 @@ function MainApp() {
                     >
                       <span className="uppercase tracking-[0.5em] text-[10px] font-bold mb-6 block">The Collection</span>
                       <h3 className="text-6xl font-serif mb-10 italic">Women's Universe</h3>
-                      <button 
-                        onClick={() => { setActiveCategory('Dresses'); scrollToProducts(); }} 
+                      <button
+                        onClick={() => { setActiveCategory('Dresses'); scrollToProducts(); }}
                         className="group relative px-10 py-4 overflow-hidden border border-white"
                       >
                         <div className="absolute inset-0 bg-white translate-y-full transition-transform duration-500 group-hover:translate-y-0" />
@@ -1012,7 +1013,7 @@ function MainApp() {
                     </motion.div>
                   </div>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
@@ -1027,8 +1028,8 @@ function MainApp() {
                     >
                       <span className="uppercase tracking-[0.5em] text-[10px] font-bold mb-6 block">The Collection</span>
                       <h3 className="text-6xl font-serif mb-10 italic">Men's Universe</h3>
-                      <button 
-                        onClick={() => { setActiveCategory('Outerwear'); scrollToProducts(); }} 
+                      <button
+                        onClick={() => { setActiveCategory('Outerwear'); scrollToProducts(); }}
                         className="group relative px-10 py-4 overflow-hidden border border-white"
                       >
                         <div className="absolute inset-0 bg-white translate-y-full transition-transform duration-500 group-hover:translate-y-0" />
@@ -1050,7 +1051,7 @@ function MainApp() {
                 <div className="mb-12 flex flex-col md:flex-row items-center justify-between gap-8 border-b border-black/5 pb-8">
                   <div className="flex items-center gap-8 overflow-x-auto pb-4 md:pb-0 no-scrollbar w-full md:w-auto">
                     {['All', 'Dresses', 'Outerwear', 'Knitwear', 'Bottoms', 'Footwear', 'Tops'].map(cat => (
-                      <button 
+                      <button
                         key={cat}
                         onClick={() => setActiveCategory(cat)}
                         className={cn(
@@ -1062,8 +1063,8 @@ function MainApp() {
                       </button>
                     ))}
                   </div>
-                  
-                  <button 
+
+                  <button
                     onClick={() => setIsFilterOpen(!isFilterOpen)}
                     className="flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] font-bold hover:opacity-50 transition-opacity"
                   >
@@ -1073,7 +1074,7 @@ function MainApp() {
 
                 <AnimatePresence>
                   {isFilterOpen && (
-                    <motion.div 
+                    <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
@@ -1084,10 +1085,10 @@ function MainApp() {
                         <div className="space-y-6">
                           <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold">Price Range</h4>
                           <div className="space-y-4">
-                            <input 
-                              type="range" 
-                              min="0" 
-                              max="1000" 
+                            <input
+                              type="range"
+                              min="0"
+                              max="1000"
                               step="50"
                               value={priceRange[1]}
                               onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
@@ -1105,17 +1106,17 @@ function MainApp() {
                           <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold">Colors</h4>
                           <div className="flex flex-wrap gap-3">
                             {['Black', 'White', 'Champagne', 'Camel', 'Grey', 'Brown'].map(color => (
-                              <button 
+                              <button
                                 key={color}
                                 onClick={() => {
-                                  setSelectedColors(prev => 
+                                  setSelectedColors(prev =>
                                     prev.includes(color) ? prev.filter(c => c !== color) : [...prev, color]
                                   );
                                 }}
                                 className={cn(
                                   "px-4 py-2 text-[9px] uppercase tracking-widest font-bold border transition-all",
-                                  selectedColors.includes(color) 
-                                    ? "bg-brand-bg text-white border-brand-bg" 
+                                  selectedColors.includes(color)
+                                    ? "bg-brand-bg text-white border-brand-bg"
                                     : "bg-white text-brand-bg border-black/10 hover:border-brand-bg"
                                 )}
                               >
@@ -1130,17 +1131,17 @@ function MainApp() {
                           <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold">Sizes</h4>
                           <div className="flex flex-wrap gap-3">
                             {['XS', 'S', 'M', 'L', 'XL', 'XXL', '30', '32', '34', '36', '8', '9', '10', '11', '12'].map(size => (
-                              <button 
+                              <button
                                 key={size}
                                 onClick={() => {
-                                  setSelectedSizes(prev => 
+                                  setSelectedSizes(prev =>
                                     prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
                                   );
                                 }}
                                 className={cn(
                                   "w-10 h-10 text-[9px] font-bold border transition-all flex items-center justify-center",
-                                  selectedSizes.includes(size) 
-                                    ? "bg-brand-bg text-white border-brand-bg" 
+                                  selectedSizes.includes(size)
+                                    ? "bg-brand-bg text-white border-brand-bg"
                                     : "bg-white text-brand-bg border-black/10 hover:border-brand-bg"
                                 )}
                               >
@@ -1151,7 +1152,7 @@ function MainApp() {
                         </div>
                       </div>
                       <div className="flex justify-end mt-4">
-                        <button 
+                        <button
                           onClick={() => {
                             setPriceRange([0, 1000]);
                             setSelectedColors([]);
@@ -1173,18 +1174,18 @@ function MainApp() {
                 ) : filteredProducts.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
                     {filteredProducts.map((product, idx) => (
-                      <motion.div 
+                      <motion.div
                         key={product.id}
                         layout
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}
                         className="group cursor-pointer"
-                        onClick={() => { setSelectedProduct(product); window.scrollTo({top: 0, behavior: 'smooth'}); }}
+                        onClick={() => { setSelectedProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       >
                         <div className="relative aspect-[4/5] overflow-hidden bg-brand-muted mb-8">
-                          <ProductImage 
-                            src={product.image} 
+                          <ProductImage
+                            src={product.image}
                             alt={product.name}
                             className="group-hover:scale-110 transition-transform duration-1000"
                           />
@@ -1199,9 +1200,9 @@ function MainApp() {
                 ) : (
                   <div className="py-20 text-center">
                     <p className="text-brand-bg/40 font-serif text-xl italic">No pieces found matching your criteria.</p>
-                    <button onClick={() => { 
-                      setSearchQuery(''); 
-                      setActiveCategory('All'); 
+                    <button onClick={() => {
+                      setSearchQuery('');
+                      setActiveCategory('All');
                       setPriceRange([0, 1000]);
                       setSelectedColors([]);
                       setSelectedSizes([]);
@@ -1218,7 +1219,7 @@ function MainApp() {
                   </div>
                   <div className="order-1 md:order-2">
                     <span className="uppercase tracking-[0.4em] text-[10px] font-bold opacity-40 mb-6 block">The Maison</span>
-                    <h2 className="text-6xl font-serif mb-10 leading-tight">A Legacy of <br/><span className="italic">Craftsmanship</span></h2>
+                    <h2 className="text-6xl font-serif mb-10 leading-tight">A Legacy of <br /><span className="italic">Craftsmanship</span></h2>
                     <p className="text-brand-bg/60 text-lg leading-relaxed mb-12">
                       Since our inception, Vogue & Verve has stood for the pinnacle of luxury. Every piece is a testament to the artisans who pour their soul into every stitch, ensuring that elegance is not just seen, but felt.
                     </p>
@@ -1236,11 +1237,11 @@ function MainApp() {
               className="max-w-7xl mx-auto px-6 pt-32 pb-24"
             >
               <div className="flex items-center justify-between mb-12">
-                <button 
+                <button
                   onClick={() => setSelectedProduct(null)}
                   className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] font-bold opacity-30 hover:opacity-100 transition-all group"
                 >
-                  <ArrowRight size={14} className="rotate-180 group-hover:-translate-x-1 transition-transform" /> 
+                  <ArrowRight size={14} className="rotate-180 group-hover:-translate-x-1 transition-transform" />
                   Back to Collection
                 </button>
               </div>
@@ -1250,17 +1251,17 @@ function MainApp() {
                 <div className="space-y-8">
                   <div className="aspect-[4/5] rounded-none overflow-hidden bg-brand-muted relative">
                     {selectedProduct.video ? (
-                      <video 
-                        src={selectedProduct.video} 
-                        autoPlay 
-                        loop 
-                        muted 
-                        playsInline 
+                      <video
+                        src={selectedProduct.video}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <ProductImage 
-                        src={selectedProduct.image} 
+                      <ProductImage
+                        src={selectedProduct.image}
                         alt={selectedProduct.name}
                       />
                     )}
@@ -1273,12 +1274,12 @@ function MainApp() {
 
                   {selectedProduct.video2 && (
                     <div className="aspect-[4/5] rounded-none overflow-hidden bg-brand-muted relative">
-                      <video 
-                        src={selectedProduct.video2} 
-                        autoPlay 
-                        loop 
-                        muted 
-                        playsInline 
+                      <video
+                        src={selectedProduct.video2}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute top-6 right-6 bg-black/40 backdrop-blur-md px-4 py-2 text-[8px] uppercase tracking-[0.3em] font-bold text-white border border-white/10">
@@ -1315,7 +1316,7 @@ function MainApp() {
                     <div>
                       <div className="flex items-center justify-between mb-6">
                         <span className="text-[10px] uppercase tracking-[0.4em] font-bold">Size</span>
-                        <button 
+                        <button
                           onClick={() => setIsSizeChartOpen(true)}
                           className="text-[9px] uppercase tracking-widest font-bold text-brand-accent hover:underline"
                         >
@@ -1330,19 +1331,19 @@ function MainApp() {
                         ))}
                       </div>
                     </div>
-                    
+
                     <div>
                       <span className="text-[10px] uppercase tracking-[0.4em] font-bold mb-6 block">Quantity</span>
                       <div className="flex items-center gap-6">
                         <div className="flex items-center border border-black/10">
-                          <button 
+                          <button
                             onClick={() => setBuyQuantity(Math.max(1, buyQuantity - 1))}
                             className="w-10 h-10 flex items-center justify-center hover:bg-black/5 transition-colors"
                           >
                             -
                           </button>
                           <span className="w-12 text-center text-xs font-bold">{buyQuantity}</span>
-                          <button 
+                          <button
                             onClick={() => setBuyQuantity(buyQuantity + 1)}
                             className="w-10 h-10 flex items-center justify-center hover:bg-black/5 transition-colors"
                           >
@@ -1366,7 +1367,7 @@ function MainApp() {
                   </div>
 
                   <div className="flex gap-4">
-                    <button 
+                    <button
                       onClick={() => addToCart(selectedProduct, buyQuantity)}
                       disabled={addingToCartId === selectedProduct.id}
                       className="flex-grow bg-white text-brand-bg border border-brand-bg py-5 rounded-none uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-bg hover:text-brand-paper transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1377,16 +1378,16 @@ function MainApp() {
                         <>Add to Bag <ShoppingBag size={16} /></>
                       )}
                     </button>
-                    <button 
+                    <button
                       onClick={() => setIsBuyNowOpen(true)}
                       className="flex-grow bg-brand-bg text-brand-paper py-5 rounded-none uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-bg/80 transition-all flex items-center justify-center gap-3"
                     >
                       Buy Now
                     </button>
                   </div>
-                  
+
                   <div className="mt-6 space-y-4">
-                    <button 
+                    <button
                       onClick={() => setIsTryOnOpen(true)}
                       className="w-full py-5 border border-brand-accent text-brand-accent text-[10px] uppercase tracking-[0.4em] font-bold hover:bg-brand-accent hover:text-white transition-all flex items-center justify-center gap-3"
                     >
@@ -1401,12 +1402,12 @@ function MainApp() {
                 <h3 className="text-2xl font-serif mb-12">Complete the Look</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                   {products.filter(p => p.id !== selectedProduct.id).slice(0, 4).map(product => (
-                    <div key={product.id} className="group cursor-pointer" onClick={() => { setSelectedProduct(product); window.scrollTo({top: 0, behavior: 'smooth'}); }}>
+                    <div key={product.id} className="group cursor-pointer" onClick={() => { setSelectedProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                       <div className="aspect-[3/4] rounded-xl overflow-hidden bg-white mb-4">
-                        <ProductImage 
-                          src={product.image} 
-                          alt={product.name} 
-                          className="group-hover:scale-105 transition-transform" 
+                        <ProductImage
+                          src={product.image}
+                          alt={product.name}
+                          className="group-hover:scale-105 transition-transform"
                         />
                       </div>
                       <h4 className="text-sm font-medium">{product.name}</h4>
@@ -1428,11 +1429,11 @@ function MainApp() {
                   <Sparkles size={16} className="text-brand-accent" />
                   <span className="text-xs font-semibold uppercase tracking-widest">AI Personal Stylist</span>
                 </div>
-                <h2 className="text-5xl font-serif mb-6 leading-tight">Find Your Perfect <br/><span className="italic text-brand-accent">Signature Look</span></h2>
+                <h2 className="text-5xl font-serif mb-6 leading-tight">Find Your Perfect <br /><span className="italic text-brand-accent">Signature Look</span></h2>
                 <p className="text-brand-paper/70 text-lg mb-10 max-w-md">
                   Not sure how to style that blazer? Our AI stylist is trained on the latest trends and our entire collection to help you look your best.
                 </p>
-                <button 
+                <button
                   onClick={() => setIsChatOpen(true)}
                   className="bg-brand-accent text-brand-bg px-10 py-4 rounded-full font-semibold hover:bg-brand-accent/90 transition-all"
                 >
@@ -1441,8 +1442,8 @@ function MainApp() {
               </div>
               <div className="relative">
                 <div className="aspect-square rounded-full border border-white/10 absolute -top-20 -right-20 w-[120%] animate-pulse" />
-                <img 
-                  src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&q=80&w=800" 
+                <img
+                  src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&q=80&w=800"
                   alt="Styling"
                   className="rounded-3xl relative z-10 shadow-2xl"
                   referrerPolicy="no-referrer"
@@ -1453,13 +1454,21 @@ function MainApp() {
         )}
       </main>
 
+      {selectedProduct && (
+        <TryOnModal
+          isOpen={isTryOnOpen}
+          onClose={() => setIsTryOnOpen(false)}
+          garmentImageUrl={selectedProduct.image}
+        />
+      )}
+
       {/* Footer */}
       <footer ref={footerRef} className="bg-white border-t border-black/5 py-32">
         <div className="max-w-[1800px] mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-24">
           <div className="col-span-1">
             <h1 className="text-2xl font-serif font-bold tracking-[0.2em] mb-8">VOGUE & VERVE</h1>
             <p className="text-xs uppercase tracking-widest text-brand-bg/40 leading-loose">
-              The pinnacle of luxury craftsmanship. <br/>Defining elegance since 2026.
+              The pinnacle of luxury craftsmanship. <br />Defining elegance since 2026.
             </p>
           </div>
           <div>
@@ -1484,10 +1493,10 @@ function MainApp() {
             <h5 className="text-[10px] uppercase tracking-[0.4em] font-bold mb-10">Newsletter</h5>
             <p className="text-xs uppercase tracking-widest text-brand-bg/40 mb-8 leading-loose">Subscribe to receive the latest news from the Maison.</p>
             <form onSubmit={handleNewsletter} className="flex border-b border-black/20 pb-2">
-              <input 
-                type="email" 
+              <input
+                type="email"
                 required
-                placeholder="Email address" 
+                placeholder="Email address"
                 className="bg-transparent text-xs uppercase tracking-widest flex-grow focus:outline-none"
               />
               <button type="submit" className="hover:opacity-50 transition-opacity">
@@ -1510,14 +1519,14 @@ function MainApp() {
       <AnimatePresence>
         {isCartOpen && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsCartOpen(false)}
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
             />
-            <motion.div 
+            <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -1536,7 +1545,7 @@ function MainApp() {
                   <div className="h-full flex flex-col items-center justify-center text-center">
                     <ShoppingBag size={48} className="opacity-10 mb-4" />
                     <p className="text-brand-bg/40">Your bag is empty</p>
-                    <button 
+                    <button
                       onClick={() => setIsCartOpen(false)}
                       className="mt-6 text-sm font-semibold uppercase tracking-widest border-b border-brand-bg pb-1"
                     >
@@ -1580,7 +1589,7 @@ function MainApp() {
                     <span className="font-serif font-bold">${cartTotal.toFixed(2)}</span>
                   </div>
                   <p className="text-[10px] text-brand-bg/40 uppercase tracking-widest text-center">Shipping & taxes calculated at checkout</p>
-                  <button 
+                  <button
                     onClick={handleCheckout}
                     className="w-full bg-brand-bg text-brand-paper py-5 rounded-none uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-bg/80 transition-all"
                   >
@@ -1596,7 +1605,7 @@ function MainApp() {
       {/* AI Stylist Chat */}
       <AnimatePresence>
         {isChatOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -1620,11 +1629,10 @@ function MainApp() {
             <div className="flex-grow overflow-y-auto p-6 space-y-6">
               {chatMessages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] p-4 rounded-2xl text-sm ${
-                    msg.role === 'user' 
-                      ? 'bg-brand-bg text-brand-paper rounded-tr-none' 
-                      : 'bg-brand-paper text-brand-bg border border-black/5 rounded-tl-none'
-                  }`}>
+                  <div className={`max-w-[85%] p-4 rounded-2xl text-sm ${msg.role === 'user'
+                    ? 'bg-brand-bg text-brand-paper rounded-tr-none'
+                    : 'bg-brand-paper text-brand-bg border border-black/5 rounded-tl-none'
+                    }`}>
                     {msg.text}
                   </div>
                 </div>
@@ -1641,15 +1649,15 @@ function MainApp() {
 
             <div className="p-6 border-t border-black/5">
               <div className="flex gap-2">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder="Ask for styling advice..."
                   className="flex-grow bg-brand-paper border border-black/5 rounded-full px-5 py-3 text-sm focus:outline-none focus:border-brand-bg"
                 />
-                <button 
+                <button
                   onClick={handleSendMessage}
                   disabled={!userInput.trim() || isTyping}
                   className="bg-brand-bg text-brand-paper p-3 rounded-full hover:bg-brand-bg/90 transition-all disabled:opacity-50"
@@ -1662,79 +1670,20 @@ function MainApp() {
         )}
       </AnimatePresence>
 
-      {/* Virtual Try On Modal */}
-      <AnimatePresence>
-        {isTryOnOpen && selectedProduct && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsTryOnOpen(false)}
-              className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[110]"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed inset-4 md:inset-20 bg-white z-[120] rounded-none overflow-hidden flex flex-col md:flex-row"
-            >
-              <div className="flex-grow bg-black relative flex items-center justify-center">
-                <TryOnCamera product={selectedProduct} />
-                <button 
-                  onClick={() => setIsTryOnOpen(false)}
-                  className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-20"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              <div className="w-full md:w-96 bg-white p-12 flex flex-col">
-                <span className="uppercase tracking-[0.4em] text-[10px] font-bold opacity-40 mb-4 block">Virtual Mirror</span>
-                <h3 className="text-3xl font-serif mb-8 italic">Virtual Try On</h3>
-                <div className="flex items-center gap-4 mb-12">
-                  <div className="w-20 h-24 bg-brand-muted overflow-hidden">
-                    <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold uppercase tracking-widest">{selectedProduct.name}</h4>
-                    <p className="text-sm opacity-50">${selectedProduct.price.toFixed(2)}</p>
-                  </div>
-                </div>
-                <p className="text-xs leading-loose opacity-60 mb-12">
-                  Our AR technology allows you to see how this piece fits your silhouette. Ensure you are in a well-lit environment for the best experience.
-                </p>
-                <div className="mt-auto space-y-4">
-                  <button 
-                    onClick={() => { addToCart(selectedProduct); setIsTryOnOpen(false); }}
-                    className="w-full btn-primary"
-                  >
-                    Add to Bag
-                  </button>
-                  <button 
-                    onClick={() => setIsTryOnOpen(false)}
-                    className="w-full btn-outline"
-                  >
-                    Close Mirror
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Virtual Try On has been delegated to the standalone TryOnModal component */}
 
       {/* Buy Now Modal */}
       <AnimatePresence>
         {isBuyNowOpen && selectedProduct && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsBuyNowOpen(false)}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
@@ -1746,7 +1695,7 @@ function MainApp() {
                   <X size={24} />
                 </button>
               </div>
-              
+
               <div className="flex gap-6 mb-12 pb-12 border-b border-black/5">
                 <div className="w-24 h-32 bg-brand-muted overflow-hidden">
                   <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
@@ -1772,13 +1721,13 @@ function MainApp() {
                   <div>
                     <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block">Payment</label>
                     <div className="w-full bg-brand-muted px-4 py-3 text-xs uppercase tracking-widest font-bold flex items-center gap-2">
-                       Apple Pay
+                      Apple Pay
                     </div>
                   </div>
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => {
                   showNotification("Order placed successfully!", "success");
                   setIsBuyNowOpen(false);
@@ -1797,14 +1746,14 @@ function MainApp() {
       <AnimatePresence>
         {isSizeChartOpen && (
           <>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsSizeChartOpen(false)}
               className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100]"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
