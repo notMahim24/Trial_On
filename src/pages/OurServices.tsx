@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, useInView } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, Zap, Globe, Award, Users, TrendingUp, Check, ChevronLeft } from 'lucide-react';
@@ -73,7 +73,26 @@ const achievements = [
   { value: 40, suffix: '+', label: 'Countries' },
 ];
 
+interface Service {
+  id: string;
+  title: string;
+  description: string;
+  image_url: string;
+  link: string;
+}
+
 const OurServices: React.FC = () => {
+  const [services, setServices] = useState<Service[]>([]);
+
+  useEffect(() => {
+    fetch('/api/services')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setServices(data);
+      })
+      .catch(console.error);
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Back Nav */}
@@ -244,6 +263,48 @@ const OurServices: React.FC = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* ── Dynamic Services Section ── */}
+      {services.length > 0 && (
+        <section className="py-32 bg-white">
+          <div className="max-w-[1400px] mx-auto px-8">
+            <motion.div {...fadeUp} className="text-center mb-16">
+              <span className="text-[10px] uppercase tracking-[0.5em] font-bold text-black/30 mb-6 block">What We Offer</span>
+              <h2 className="text-5xl font-serif">Our Services</h2>
+            </motion.div>
+            
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12">
+              {services.map((service, i) => (
+                <motion.div 
+                  key={service.id} 
+                  {...fadeUp} 
+                  transition={{ ...fadeUp.transition, delay: i * 0.1 }}
+                  className="group relative overflow-hidden bg-[#f9f8f6] border border-black/5 hover:border-[#8b7355]/30 transition-colors"
+                >
+                  <div className="aspect-video relative overflow-hidden flex items-center justify-center bg-black/5">
+                    {service.image_url ? (
+                      <img src={service.image_url} alt={service.title} className="w-full h-full object-cover p-4" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Sparkles size={40} className="text-[#8b7355]/30" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-8">
+                    <h3 className="text-2xl font-serif mb-4">{service.title}</h3>
+                    <p className="text-black/60 leading-relaxed mb-6 whitespace-pre-line">{service.description}</p>
+                    {service.link && (
+                      <a href={service.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-[10px] uppercase tracking-[0.2em] font-bold text-[#8b7355] hover:text-black transition-colors">
+                        Learn More <ArrowRight size={14} className="ml-2" />
+                      </a>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── About Parent Company ── */}
       <section className="py-40 max-w-[1400px] mx-auto px-8">

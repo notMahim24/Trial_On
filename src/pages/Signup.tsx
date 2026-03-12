@@ -42,7 +42,7 @@ const Signup: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             className="text-[12vw] font-admin-display font-bold leading-[0.85] tracking-tighter text-white uppercase"
           >
-            Join<br />Zelori
+            Join<br />VESTON
           </motion.h1>
           <motion.p 
             initial={{ y: 20, opacity: 0 }}

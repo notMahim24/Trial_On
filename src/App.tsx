@@ -12,7 +12,6 @@ import {
   Trash2,
   Heart,
   Sparkles,
-  Send,
   Loader2,
   ChevronRight,
   ChevronDown,
@@ -23,8 +22,7 @@ import {
   VolumeX,
   Filter
 } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
-import { Product, CartItem, ChatMessage } from './types';
+import { Product, CartItem } from './types';
 
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import AdminLayout from './admin/AdminLayout';
@@ -46,6 +44,8 @@ import AdminSettings from './admin/AdminSettings';
 import AdminAccounts from './admin/AdminAccounts';
 import AdminProfile from './admin/AdminProfile';
 import AdminAuditLogs from './admin/AdminAuditLogs';
+import AdminServices from './admin/AdminServices';
+import AdminContacts from './admin/AdminContacts';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -54,8 +54,9 @@ import TryOnModal from './components/TryOnModal';
 import QuickViewModal from './components/QuickViewModal';
 import ProductZoom from './components/ProductZoom';
 import OurServices from './pages/OurServices';
+import ContactUs from './pages/ContactUs';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly = false }) => {
   const { isAuthenticated, isAdmin } = useAuth();
@@ -153,6 +154,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/services" element={<OurServices />} />
+          <Route path="/contact" element={<ContactUs />} />
           <Route path="/admin" element={
             <ProtectedRoute adminOnly>
               <AdminLayout />
@@ -177,6 +179,8 @@ export default function App() {
             <Route path="admins" element={<AdminAccounts />} />
             <Route path="audit-logs" element={<AdminAuditLogs />} />
             <Route path="users" element={<AdminUsers />} />
+            <Route path="services" element={<AdminServices />} />
+            <Route path="contacts" element={<AdminContacts />} />
             {/* Placeholder routes for other admin pages */}
             <Route path="*" element={<div className="p-20 text-center font-serif italic opacity-40">This administrative module is currently being refined.</div>} />
           </Route>
@@ -244,6 +248,10 @@ function MainApp() {
   const [couponInput, setCouponInput] = useState('');
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [buyQuantity, setBuyQuantity] = useState(1);
+  const [buyNowEmail, setBuyNowEmail] = useState('');
+  const [buyNowSize, setBuyNowSize] = useState('M');
+  const [buyNowSuccess, setBuyNowSuccess] = useState(false);
+  const [isBuyNowSubmitting, setIsBuyNowSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
@@ -255,14 +263,12 @@ function MainApp() {
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'info' } | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  // Profile settings state
+  const [profileDisplayName, setProfileDisplayName] = useState('');
+  const [profileOldPassword, setProfileOldPassword] = useState('');
+  const [profileNewPassword, setProfileNewPassword] = useState('');
+  const [profileSaveMsg, setProfileSaveMsg] = useState('');
 
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { role: 'model', text: "Hello! I'm your personal VESTON AI stylist. How can I help you elevate your look today?" }
-  ]);
-  const [userInput, setUserInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-
-  const chatEndRef = useRef<HTMLDivElement>(null);
   const productsRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLElement>(null);
 
@@ -428,10 +434,6 @@ function MainApp() {
     setFilteredProducts(result);
   }, [searchQuery, activeCategory, products, priceRange, selectedColors, selectedSizes]);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
-
   const showNotification = (message: string, type: 'success' | 'info' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
@@ -522,55 +524,24 @@ function MainApp() {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!userInput.trim()) return;
-
-    const newMessages: ChatMessage[] = [...chatMessages, { role: 'user', text: userInput }];
-    setChatMessages(newMessages);
-    const currentInput = userInput;
-    setUserInput('');
-    setIsTyping(true);
-
-    // Mock responses for local development or when API key is missing
-    if (!process.env.GEMINI_API_KEY) {
-      setTimeout(() => {
-        let mockResponse = "That's a great choice! Our collection is designed for timeless elegance. Would you like to see more details about our latest arrivals?";
-
-        const input = currentInput.toLowerCase();
-        if (input.includes('price') || input.includes('cost')) {
-          mockResponse = "Our premium pieces range from $89 to $250. Each item is crafted with the finest materials like silk, cashmere, and Italian wool.";
-        } else if (input.includes('size') || input.includes('fit')) {
-          mockResponse = "We offer a range of sizes from XS to XXL. Most of our tailored pieces follow standard European sizing for a precision fit.";
-        } else if (input.includes('try') || input.includes('try-on') || input.includes('virtual')) {
-          mockResponse = "Our AI-powered Virtual Try-On lets you see how any outfit looks on your own photo! Just select a product and tap Virtual Try-On. It's powered by VESTON AI — no camera permissions needed for upload mode.";
-        } else if (input.includes('hello') || input.includes('hi')) {
-          mockResponse = "Welcome to VESTON. I am your personal AI style concierge — powered by NEXARA Technology Group. How can I assist your fashion journey today?";
-        } else if (input.includes('service') || input.includes('company') || input.includes('about')) {
-          mockResponse = "VESTON is powered by NEXARA Technology Group. We specialize in AI-driven virtual fashion try-on technology. Visit our 'Our Services' page from the navigation menu to learn our full story!";
-        }
-
-        setChatMessages([...newMessages, { role: 'model', text: mockResponse }]);
-        setIsTyping(false);
-      }, 1000);
-      return;
-    }
-
+  const handleBuyNow = async () => {
+    if (!buyNowEmail || !selectedProduct) return;
+    setIsBuyNowSubmitting(true);
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: newMessages.map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] })),
-        config: {
-          systemInstruction: "You are a high-end AI fashion stylist for 'VESTON', a luxury ecommerce brand by NEXARA Technology Group. Your tone is sophisticated, helpful, and trend-aware. Recommend products from the catalog if relevant. The catalog includes: Midnight Velvet Blazer ($249.99), Silk Slip Dress ($189.00), Cashmere Turtleneck ($159.50), Tailored Wool Trousers ($129.00), Leather Chelsea Boots ($210.00), Oversized Linen Shirt ($89.00)."
-        }
+      await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: buyNowEmail,
+          total: selectedProduct.price * buyQuantity,
+          items: [{ ...selectedProduct, quantity: buyQuantity, size: buyNowSize }]
+        })
       });
-
-      setChatMessages([...newMessages, { role: 'model', text: response.text || "I'm sorry, I couldn't process that. How else can I assist your style journey?" }]);
-    } catch (error) {
-      console.error("Gemini Error:", error);
-      // Fallback if API fails or key is missing
-      setChatMessages([...newMessages, { role: 'model', text: "I'm currently offline, but I'd love to help you with your style journey. Please check back soon!" }]);
+      setBuyNowSuccess(true);
+    } catch {
+      showNotification('Order could not be placed. Please try again.', 'info');
     } finally {
-      setIsTyping(false);
+      setIsBuyNowSubmitting(false);
     }
   };
 
@@ -627,6 +598,7 @@ function MainApp() {
                     <button onClick={() => { setActiveCategory('All'); scrollToProducts(); setIsNavMenuOpen(false); }} className="w-full text-left px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-colors">Men</button>
                     <button onClick={() => { scrollToFooter(); setIsNavMenuOpen(false); }} className="w-full text-left px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-colors">Maison</button>
                     <Link to="/services" onClick={() => setIsNavMenuOpen(false)} className="block w-full text-left px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-colors text-[#8b7355] border-t border-black/5">Our Services</Link>
+                    <Link to="/contact" onClick={() => setIsNavMenuOpen(false)} className="block w-full text-left px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-colors text-[#8b7355] border-t border-black/5">Contact Us</Link>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -994,27 +966,56 @@ function MainApp() {
                 )}
 
                 {profileView === 'settings' && (
-                  <div className="space-y-10">
-                    <div className="space-y-6">
-                      <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-40">Account Settings</h4>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between py-2 border-b border-black/5">
-                          <span className="text-xs font-medium">Email Notifications</span>
-                          <button className="w-10 h-5 bg-emerald-500 rounded-full relative">
-                            <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between py-2 border-b border-black/5">
-                          <span className="text-xs font-medium">Two-Factor Authentication</span>
-                          <button className="w-10 h-5 bg-black/10 rounded-full relative">
-                            <div className="absolute left-1 top-1 w-3 h-3 bg-white rounded-full" />
-                          </button>
-                        </div>
-                      </div>
+                  <div className="space-y-8">
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-40">Update Display Name</h4>
+                      <input
+                        type="text"
+                        placeholder={user?.name || 'Display name'}
+                        value={profileDisplayName}
+                        onChange={(e) => setProfileDisplayName(e.target.value)}
+                        className="w-full border-b border-black/20 py-2 text-sm focus:outline-none focus:border-black transition-colors bg-transparent"
+                      />
                     </div>
-                    <div className="space-y-6">
-                      <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-40">Privacy</h4>
-                      <button className="w-full text-left text-xs font-medium py-2 border-b border-black/5">Manage Data & Privacy</button>
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-40">Change Password</h4>
+                      <input
+                        type="password"
+                        placeholder="Current Password"
+                        value={profileOldPassword}
+                        onChange={(e) => setProfileOldPassword(e.target.value)}
+                        className="w-full border-b border-black/20 py-2 text-sm focus:outline-none focus:border-black transition-colors bg-transparent"
+                      />
+                      <input
+                        type="password"
+                        placeholder="New Password"
+                        value={profileNewPassword}
+                        onChange={(e) => setProfileNewPassword(e.target.value)}
+                        className="w-full border-b border-black/20 py-2 text-sm focus:outline-none focus:border-black transition-colors bg-transparent"
+                      />
+                    </div>
+                    {profileSaveMsg && (
+                      <p className="text-xs text-emerald-600 font-medium">{profileSaveMsg}</p>
+                    )}
+                    <button
+                      onClick={() => {
+                        setProfileSaveMsg('Settings saved successfully.');
+                        setTimeout(() => setProfileSaveMsg(''), 3000);
+                        setProfileOldPassword('');
+                        setProfileNewPassword('');
+                      }}
+                      className="w-full py-5 bg-black text-white text-xs uppercase tracking-[0.3em] font-bold hover:opacity-80 transition-opacity"
+                    >
+                      Save Changes
+                    </button>
+                    <div className="space-y-4 pt-6 border-t border-black/5">
+                      <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-40">Email Preferences</h4>
+                      <div className="flex items-center justify-between py-2 border-b border-black/5">
+                        <span className="text-xs font-medium">Email Notifications</span>
+                        <button className="w-10 h-5 bg-emerald-500 rounded-full relative">
+                          <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full" />
+                        </button>
+                      </div>
                       <button className="w-full text-left text-xs font-medium py-2 border-b border-black/5 text-red-500">Delete Account</button>
                     </div>
                   </div>
@@ -1107,7 +1108,7 @@ function MainApp() {
                         <div className="absolute inset-0 bg-white transition-transform duration-700 group-hover:-translate-y-full" />
                       </button>
                       <button
-                        onClick={() => { setIsChatOpen(true); }}
+                        onClick={scrollToProducts}
                         className="group px-14 py-5 border border-white/40 text-white text-[10px] uppercase tracking-[0.5em] font-bold hover:border-white hover:bg-white/10 backdrop-blur-sm transition-all duration-500 min-w-[220px] flex items-center justify-center gap-3"
                       >
                         <Camera size={14} />
@@ -1721,31 +1722,31 @@ function MainApp() {
           )}
         </AnimatePresence>
 
-        {/* AI Stylist Teaser */}
+        {/* Virtual Try-On Promo Banner */}
         {!selectedProduct && (
           <section className="bg-brand-bg text-brand-paper py-24 overflow-hidden relative">
             <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 items-center gap-16">
               <div className="relative z-10">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 mb-8">
-                  <Sparkles size={16} className="text-brand-accent" />
-                  <span className="text-xs font-semibold uppercase tracking-widest">AI Personal Stylist</span>
+                  <Camera size={16} className="text-brand-accent" />
+                  <span className="text-xs font-semibold uppercase tracking-widest">Virtual Try-On</span>
                 </div>
-                <h2 className="text-5xl font-serif mb-6 leading-tight">Find Your Perfect <br /><span className="italic text-brand-accent">Signature Look</span></h2>
+                <h2 className="text-5xl font-serif mb-6 leading-tight">See how every outfit<br /><span className="italic text-brand-accent">looks on you</span></h2>
                 <p className="text-brand-paper/70 text-lg mb-10 max-w-md">
-                  Not sure how to style that blazer? Our AI stylist is trained on the latest trends and our entire collection to help you look your best.
+                  Upload your photo and see exactly how any garment fits you — powered by VESTON AI virtual try-on technology.
                 </p>
                 <button
-                  onClick={() => setIsChatOpen(true)}
+                  onClick={scrollToProducts}
                   className="bg-brand-accent text-brand-bg px-10 py-4 rounded-full font-semibold hover:bg-brand-accent/90 transition-all"
                 >
-                  Consult Stylist
+                  Explore Collection
                 </button>
               </div>
               <div className="relative">
                 <div className="aspect-square rounded-full border border-white/10 absolute -top-20 -right-20 w-[120%] animate-pulse" />
                 <img
                   src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&q=80&w=800"
-                  alt="Styling"
+                  alt="Virtual Try-On"
                   className="rounded-3xl relative z-10 shadow-2xl"
                   referrerPolicy="no-referrer"
                 />
@@ -1755,19 +1756,7 @@ function MainApp() {
         )}
       </main>
 
-      {/* Floating AI Chat Button */}
-      {!isChatOpen && !selectedProduct && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 1.5, type: 'spring' }}
-          onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-8 right-8 z-[75] w-16 h-16 bg-brand-bg text-brand-paper rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform"
-          title="Chat with AI Stylist"
-        >
-          <Sparkles size={22} className="text-brand-accent" />
-        </motion.button>
-      )}
+
 
       {/* Sticky Add-to-Bag bar on mobile when product is selected */}
       {selectedProduct && (
@@ -1853,8 +1842,7 @@ function MainApp() {
               <li><Link to="/services" className="hover:text-brand-bg transition-colors">Our Services</Link></li>
               <li><button onClick={() => showNotification('Complimentary express shipping on orders over $200', 'info')} className="hover:text-brand-bg transition-colors">Shipping</button></li>
               <li><button onClick={() => showNotification('30-day hassle-free returns policy', 'info')} className="hover:text-brand-bg transition-colors">Returns</button></li>
-              <li><button onClick={() => showNotification('Our advisors are available Mon–Sat 9am–6pm EST', 'info')} className="hover:text-brand-bg transition-colors">Contact Us</button></li>
-              <li><button onClick={() => setIsChatOpen(true)} className="hover:text-brand-bg transition-colors">AI Stylist</button></li>
+              <li><Link to="/contact" className="hover:text-brand-bg transition-colors">Contact Us</Link></li>
             </ul>
           </div>
           <div>
@@ -2030,73 +2018,7 @@ function MainApp() {
         )}
       </AnimatePresence>
 
-      {/* AI Stylist Chat */}
-      <AnimatePresence>
-        {isChatOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed bottom-6 right-6 w-[400px] h-[600px] bg-white z-[80] shadow-2xl rounded-3xl flex flex-col overflow-hidden border border-black/5"
-          >
-            <div className="bg-brand-bg text-brand-paper p-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-brand-accent flex items-center justify-center">
-                  <Sparkles size={20} className="text-brand-bg" />
-                </div>
-                <div>
-                  <h3 className="font-serif text-lg leading-none">AI Stylist</h3>
-                  <span className="text-[10px] uppercase tracking-widest opacity-60">Personal Concierge</span>
-                </div>
-              </div>
-              <button onClick={() => setIsChatOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                <X size={20} />
-              </button>
-            </div>
 
-            <div className="flex-grow overflow-y-auto p-6 space-y-6">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] p-4 rounded-2xl text-sm ${msg.role === 'user'
-                    ? 'bg-brand-bg text-brand-paper rounded-tr-none'
-                    : 'bg-brand-paper text-brand-bg border border-black/5 rounded-tl-none'
-                    }`}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-brand-paper p-4 rounded-2xl rounded-tl-none border border-black/5">
-                    <Loader2 size={16} className="animate-spin opacity-40" />
-                  </div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            <div className="p-6 border-t border-black/5">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Ask for styling advice..."
-                  className="flex-grow bg-brand-paper border border-black/5 rounded-full px-5 py-3 text-sm focus:outline-none focus:border-brand-bg"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!userInput.trim() || isTyping}
-                  className="bg-brand-bg text-brand-paper p-3 rounded-full hover:bg-brand-bg/90 transition-all disabled:opacity-50"
-                >
-                  <Send size={18} />
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Virtual Try On has been delegated to the standalone TryOnModal component */}
 
@@ -2108,63 +2030,108 @@ function MainApp() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsBuyNowOpen(false)}
+              onClick={() => { setIsBuyNowOpen(false); setBuyNowSuccess(false); setBuyNowEmail(''); }}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]"
             />
             <motion.div
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xl bg-white z-[120] p-12 shadow-2xl"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-xl bg-white z-[120] shadow-2xl overflow-hidden"
             >
-              <div className="flex justify-between items-center mb-12">
-                <h3 className="text-2xl font-serif italic">Express Checkout</h3>
-                <button onClick={() => setIsBuyNowOpen(false)} className="p-2 hover:bg-black/5">
+              <div className="flex justify-between items-center p-8 border-b border-black/5">
+                <h3 className="text-2xl font-serif italic">{buyNowSuccess ? 'Order Confirmed' : 'Express Checkout'}</h3>
+                <button onClick={() => { setIsBuyNowOpen(false); setBuyNowSuccess(false); setBuyNowEmail(''); }} className="p-2 hover:bg-black/5">
                   <X size={24} />
                 </button>
               </div>
 
-              <div className="flex gap-6 mb-12 pb-12 border-b border-black/5">
-                <div className="w-24 h-32 bg-brand-muted overflow-hidden">
-                  <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
-                </div>
-                <div className="flex flex-col justify-center">
-                  <h4 className="text-lg font-serif mb-2">{selectedProduct.name}</h4>
-                  <p className="text-xl font-bold">${selectedProduct.price.toFixed(2)}</p>
-                  <p className="text-xs uppercase tracking-widest opacity-40 mt-2">Free Express Shipping</p>
-                </div>
-              </div>
-
-              <div className="space-y-6 mb-12">
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block">Size</label>
-                    <select className="w-full bg-brand-muted px-4 py-3 text-xs uppercase tracking-widest font-bold focus:outline-none">
-                      <option>S</option>
-                      <option>M</option>
-                      <option>L</option>
-                      <option>XL</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block">Payment</label>
-                    <div className="w-full bg-brand-muted px-4 py-3 text-xs uppercase tracking-widest font-bold flex items-center gap-2">
-                      Apple Pay
+              <div className="p-8">
+                {buyNowSuccess ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="py-8 flex flex-col items-center text-center"
+                  >
+                    <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-6">
+                      <CheckCircle2 size={40} />
                     </div>
-                  </div>
-                </div>
-              </div>
+                    <h4 className="text-2xl font-serif mb-3">Thank You!</h4>
+                    <p className="text-black/60 mb-2">Your order for <strong>{selectedProduct.name}</strong> has been placed.</p>
+                    <p className="text-black/40 text-sm mb-8">A confirmation will be sent to <strong>{buyNowEmail}</strong>.</p>
+                    <div className="bg-black/5 px-8 py-4 mb-8 text-sm font-mono">#VV-{Math.floor(Math.random() * 900000) + 100000}</div>
+                    <button
+                      onClick={() => { setIsBuyNowOpen(false); setBuyNowSuccess(false); setBuyNowEmail(''); setSelectedProduct(null); }}
+                      className="w-full bg-black text-white py-4 text-xs uppercase tracking-[0.3em] font-bold hover:opacity-80"
+                    >
+                      Continue Shopping
+                    </button>
+                  </motion.div>
+                ) : (
+                  <>
+                    <div className="flex gap-5 mb-8 pb-8 border-b border-black/5">
+                      <div className="w-20 h-28 bg-brand-muted overflow-hidden flex-shrink-0">
+                        <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex flex-col justify-center">
+                        <p className="text-[10px] uppercase tracking-widest opacity-40 mb-1">{selectedProduct.category}</p>
+                        <h4 className="text-lg font-serif mb-2">{selectedProduct.name}</h4>
+                        <p className="text-xl font-bold">${(selectedProduct.price * buyQuantity).toFixed(2)}</p>
+                        <p className="text-xs text-emerald-600 mt-1">✓ Free Express Shipping</p>
+                      </div>
+                    </div>
 
-              <button
-                onClick={() => {
-                  showNotification("Order placed successfully!", "success");
-                  setIsBuyNowOpen(false);
-                  setSelectedProduct(null);
-                }}
-                className="w-full btn-primary py-6 text-sm"
-              >
-                Confirm Purchase — ${selectedProduct.price.toFixed(2)}
-              </button>
+                    <div className="space-y-5 mb-8">
+                      <div className="grid grid-cols-2 gap-5">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block opacity-60">Size</label>
+                          <select
+                            value={buyNowSize}
+                            onChange={(e) => setBuyNowSize(e.target.value)}
+                            className="w-full bg-black/5 border border-black/10 px-4 py-3 text-sm focus:outline-none focus:border-black"
+                          >
+                            {['XS','S','M','L','XL','XXL'].map(s => <option key={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block opacity-60">Quantity</label>
+                          <div className="flex items-center border border-black/10 h-full">
+                            <button onClick={() => setBuyQuantity(Math.max(1, buyQuantity - 1))} className="w-10 h-full flex items-center justify-center hover:bg-black/5 text-lg">-</button>
+                            <span className="flex-grow text-center text-sm font-bold">{buyQuantity}</span>
+                            <button onClick={() => setBuyQuantity(buyQuantity + 1)} className="w-10 h-full flex items-center justify-center hover:bg-black/5 text-lg">+</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block opacity-60">Your Email *</label>
+                        <input
+                          type="email"
+                          required
+                          value={buyNowEmail}
+                          onChange={(e) => setBuyNowEmail(e.target.value)}
+                          placeholder="name@example.com"
+                          className="w-full bg-black/5 border border-black/10 px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
+                        />
+                      </div>
+
+                      <div className="bg-black/5 p-4 flex justify-between items-center">
+                        <span className="text-xs uppercase tracking-widest font-bold opacity-60">Total</span>
+                        <span className="text-xl font-bold font-serif">${(selectedProduct.price * buyQuantity).toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleBuyNow}
+                      disabled={!buyNowEmail || isBuyNowSubmitting}
+                      className="w-full bg-black text-white py-5 text-xs uppercase tracking-[0.3em] font-bold hover:bg-black/80 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                    >
+                      {isBuyNowSubmitting ? <><Loader2 size={16} className="animate-spin" /> Processing...</> : `Place Order — $${(selectedProduct.price * buyQuantity).toFixed(2)}`}
+                    </button>
+                    <p className="text-center text-[10px] text-black/30 mt-3 uppercase tracking-widest">🔒 Secure simulated checkout</p>
+                  </>
+                )}
+              </div>
             </motion.div>
           </>
         )}

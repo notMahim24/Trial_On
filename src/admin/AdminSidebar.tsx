@@ -22,7 +22,8 @@ import {
   ClipboardList,
   LogOut,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -53,6 +54,7 @@ const navGroups = [
   {
     label: 'CUSTOMERS',
     items: [
+      { label: 'Contacts', icon: Mail, path: '/admin/contacts' },
       { label: 'Users', icon: Users, path: '/admin/users' },
       { label: 'Reviews', icon: Star, path: '/admin/reviews' },
       { label: 'Newsletters', icon: Mail, path: '/admin/newsletters' },
@@ -61,6 +63,7 @@ const navGroups = [
   {
     label: 'CONTENT',
     items: [
+      { label: 'Services', icon: Sparkles, path: '/admin/services' },
       { label: 'Media Library', icon: ImageIcon, path: '/admin/media' },
       { label: 'Banners & Hero', icon: Palette, path: '/admin/banners' },
       { label: 'Blog Posts', icon: FileText, path: '/admin/blog' },
@@ -89,7 +92,7 @@ const AdminSidebar: React.FC = () => {
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           className="flex flex-col"
         >
-          <h1 className="text-2xl font-admin-display font-bold tracking-[0.2em] text-admin-gold">ZELORI</h1>
+          <h1 className="text-2xl font-admin-display font-bold tracking-[0.2em] text-admin-gold">VESTON</h1>
           <span className="text-[9px] uppercase tracking-[0.4em] font-bold opacity-40 mt-1">ADMIN PORTAL</span>
         </motion.div>
       </div>

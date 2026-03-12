@@ -36,7 +36,7 @@ interface Discount {
 }
 
 const mockDiscounts: Discount[] = [
-  { id: 1, code: 'ZELORI20', type: 'Percentage', value: '20%', usage: '1,240 / ∞', status: 'Active', startDate: 'May 01, 2024', endDate: 'Dec 31, 2024' },
+  { id: 1, code: 'VESTON20', type: 'Percentage', value: '20%', usage: '1,240 / ∞', status: 'Active', startDate: 'May 01, 2024', endDate: 'Dec 31, 2024' },
   { id: 2, code: 'WELCOME100', type: 'Fixed Amount', value: '$100.00', usage: '450 / 1,000', status: 'Active', startDate: 'Jan 01, 2024', endDate: 'Ongoing' },
   { id: 3, code: 'SUMMER_BOGO', type: 'BOGO', value: 'Buy 1 Get 1', usage: '89 / 500', status: 'Scheduled', startDate: 'Jun 01, 2024', endDate: 'Aug 31, 2024' },
   { id: 4, code: 'FREESHIP_VIP', type: 'Free Shipping', value: 'Free', usage: '210 / ∞', status: 'Active', startDate: 'Mar 15, 2024', endDate: 'Ongoing' },

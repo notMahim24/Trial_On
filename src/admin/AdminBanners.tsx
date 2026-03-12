@@ -268,7 +268,7 @@ const AdminBanners: React.FC = () => {
                         <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Target URL</label>
                         <div className="relative">
                           <LinkIcon size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-admin-gold/40" />
-                          <input type="text" className="w-full bg-black/20 border border-admin-gold/10 pl-12 pr-4 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" placeholder="https://zelori.com/collections/..." />
+                          <input type="text" className="w-full bg-black/20 border border-admin-gold/10 pl-12 pr-4 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" placeholder="https://veston.com/collections/..." />
                         </div>
                       </div>
                     </div>

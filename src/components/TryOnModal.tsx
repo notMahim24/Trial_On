@@ -12,91 +12,73 @@ interface TryOnModalProps {
   allGarments?: { name: string; image: string; price: number }[];
 }
 
-type Mode = 'landing' | 'uploading' | 'processing' | 'result' | 'camera';
-
-const TryOnModal: React.FC<TryOnModalProps> = ({
-  isOpen,
-  onClose,
-  garmentImageUrl,
-  allGarments = [],
-}) => {
-  const [mode, setMode] = useState<Mode>('landing');
-  const [userPhoto, setUserPhoto] = useState<string | null>(null);
+const TryOnModal: React.FC<TryOnModalProps> = ({ isOpen, onClose, garmentImageUrl, allGarments = [] }) => {
+  const [mode, setMode] = useState<'landing' | 'processing' | 'result'>('landing');
+  const [userPhotoUrl, setUserPhotoUrl] = useState<string | null>(null);
+  const [userPhotoFile, setUserPhotoFile] = useState<File | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [activeGarmentIndex, setActiveGarmentIndex] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   const allItems = allGarments.length > 0 ? allGarments : [{ name: 'Selected Item', image: garmentImageUrl, price: 0 }];
   const currentGarment = allItems[activeGarmentIndex] || allItems[0];
 
-  // Simulate AI processing
-  const simulateProcessing = useCallback((photoSrc: string) => {
-    setMode('processing');
-    setScanProgress(0);
-
-    const interval = setInterval(() => {
-      setScanProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setResultImage(photoSrc);
-          setMode('result');
-          return 100;
-        }
-        return prev + Math.random() * 8 + 2;
-      });
-    }, 80);
-  }, []);
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUserPhotoFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => {
       const src = ev.target?.result as string;
-      setUserPhoto(src);
-      simulateProcessing(src);
+      setUserPhotoUrl(src);
     };
     reader.readAsDataURL(file);
   };
 
-  const startCamera = async () => {
-    setMode('camera');
+  const startTryOn = async () => {
+    if (!userPhotoUrl || !currentGarment.image) return;
+    
+    setMode('processing');
+    setScanProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setScanProgress(p => p < 90 ? p + Math.random() * 5 : p);
+    }, 500);
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
+      if (userPhotoFile) {
+        const formData = new FormData();
+        formData.append('userImage', userPhotoFile);
+        formData.append('garmentImageUrl', currentGarment.image);
+
+        const res = await fetch('/api/try-on', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (data.success && data.resultUrl) {
+          clearInterval(progressInterval);
+          setScanProgress(100);
+          setResultImage(data.resultUrl);
+          setMode('result');
+          return;
+        }
       }
-    } catch {
-      setMode('landing');
+    } catch (error) {
+      console.error("VTON API Error:", error);
     }
-  };
-
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0);
-      const src = canvas.toDataURL('image/jpeg', 0.92);
-      setUserPhoto(src);
-      stopCamera();
-      simulateProcessing(src);
-    }
-  };
-
-  const stopCamera = () => {
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
+    
+    // Fallback to simulation if API fails
+    clearInterval(progressInterval);
+    setScanProgress(100);
+    setTimeout(() => {
+      setResultImage(userPhotoUrl);
+      setMode('result');
+    }, 1000);
   };
 
   const handleSave = () => {
@@ -120,23 +102,24 @@ const TryOnModal: React.FC<TryOnModalProps> = ({
   };
 
   const handleReset = () => {
-    setUserPhoto(null);
+    setUserPhotoUrl(null);
+    setUserPhotoFile(null);
     setResultImage(null);
     setMode('landing');
     setIsSaved(false);
     setScanProgress(0);
-    stopCamera();
   };
 
   useEffect(() => {
     if (!isOpen) {
       handleReset();
     }
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen]);
-
-  useEffect(() => {
-    return () => stopCamera();
-  }, []);
 
   return (
     <AnimatePresence>
@@ -155,10 +138,11 @@ const TryOnModal: React.FC<TryOnModalProps> = ({
             <div className="veston-aurora-3" />
           </div>
 
-          {/* Close */}
+          {/* Close button — always on top */}
           <button
-            onClick={onClose}
-            className="absolute top-6 right-6 z-20 p-3 border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-all backdrop-blur-sm"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="absolute top-6 right-6 z-[200] p-3 border border-white/20 text-white/70 hover:text-white hover:border-white/60 transition-all backdrop-blur-sm bg-black/30 hover:bg-white/10"
+            aria-label="Close"
           >
             <X size={20} />
           </button>
@@ -193,59 +177,54 @@ const TryOnModal: React.FC<TryOnModalProps> = ({
 
                 {/* Landing */}
                 {mode === 'landing' && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 p-8">
-                    <div className="relative">
-                      <div className="w-28 h-28 rounded-full border border-white/10 flex items-center justify-center">
-                        <div className="w-20 h-20 rounded-full border border-[#8b7355]/30 flex items-center justify-center">
-                          <Camera size={32} className="text-white/30" />
+                  <div className="absolute inset-0 flex flex-col p-10 justify-center">
+                    <div className="text-center mb-8">
+                      <h2 className="text-2xl font-serif text-white mb-2">Virtual Try-On Setup</h2>
+                      <p className="text-white/50 text-sm">Select your photo and the clothing item to begin.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-8 mb-10 w-full max-w-2xl mx-auto">
+                      {/* Option 1: Upload Image */}
+                      <div className="border border-white/20 bg-black/20 p-6 flex flex-col items-center justify-center text-center relative min-h-[250px] group rounded-sm overflow-hidden">
+                        <div className="absolute top-4 left-4 z-20 text-white/30 text-[10px] uppercase font-bold tracking-widest">Option 1</div>
+                        {userPhotoUrl ? (
+                           <>
+                             <img src={userPhotoUrl} alt="User photo" className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-50 transition-opacity group-hover:opacity-30" />
+                             <div className="relative z-10 flex flex-col items-center gap-4">
+                               <Check size={32} className="text-emerald-400" />
+                               <span className="text-white font-serif">Photo Selected</span>
+                               <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-black/80 backdrop-blur border border-white/30 text-white text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-colors">Change Photo</button>
+                             </div>
+                           </>
+                        ) : (
+                          <div className="relative z-10 flex flex-col items-center">
+                            <Upload size={32} className="text-white/40 mb-4" />
+                            <h3 className="text-white font-serif mb-2">Upload Image</h3>
+                            <p className="text-white/40 text-[10px] uppercase tracking-widest mb-6 px-4">From Gallery</p>
+                            <button onClick={() => fileInputRef.current?.click()} className="px-6 py-3 bg-white text-black text-[10px] uppercase font-bold tracking-[0.2em] hover:bg-white/90 transition-colors shadow-lg">Select Photo</button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Option 2: Select Clothing */}
+                      <div className="border border-white/20 bg-black/20 p-6 flex flex-col items-center justify-center text-center relative min-h-[250px] rounded-sm overflow-hidden group">
+                        <div className="absolute top-4 left-4 z-20 text-white/30 text-[10px] uppercase font-bold tracking-widest">Option 2</div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10 pointer-events-none" />
+                        <img src={currentGarment.image} alt="Garment" className="absolute inset-x-0 bottom-0 top-12 w-full h-full object-contain p-4 opacity-80 group-hover:scale-105 transition-transform duration-700" />
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-sm">
+                           <span className="text-white text-[10px] uppercase tracking-widest font-bold mb-2">Clothing Selected</span>
+                           <p className="text-white font-serif px-4">{currentGarment.name}</p>
                         </div>
                       </div>
-                      <div className="absolute inset-0 rounded-full border border-white/5 animate-ping" style={{ animationDuration: '3s' }} />
                     </div>
-                    <div className="text-center">
-                      <p className="text-white/60 text-sm uppercase tracking-[0.3em] mb-2">Upload or capture</p>
-                      <p className="text-white/30 text-xs tracking-widest">your photo to begin</p>
-                    </div>
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-2 px-7 py-3 bg-white text-black text-[10px] uppercase tracking-[0.3em] font-bold hover:bg-white/90 transition-all"
-                      >
-                        <Upload size={14} /> Upload Photo
-                      </button>
-                      <button
-                        onClick={startCamera}
-                        className="flex items-center gap-2 px-7 py-3 border border-white/20 text-white text-[10px] uppercase tracking-[0.3em] font-bold hover:border-white/50 hover:bg-white/5 transition-all"
-                      >
-                        <Camera size={14} /> Use Camera
-                      </button>
-                    </div>
-                  </div>
-                )}
 
-                {/* Camera */}
-                {mode === 'camera' && (
-                  <div className="absolute inset-0 flex flex-col">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover scale-x-[-1]"
-                    />
-                    {/* Scan overlay */}
-                    <div className="absolute inset-0 pointer-events-none">
-                      <div className="veston-scan-line" />
-                      <div className="absolute inset-8 border border-white/20" />
-                      {/* Face guide */}
-                      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-32 h-40 border border-white/20 rounded-full" />
-                    </div>
-                    <div className="absolute bottom-6 left-0 right-0 flex justify-center">
-                      <button
-                        onClick={capturePhoto}
-                        className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all"
+                    <div className="text-center mt-4">
+                      <button 
+                        onClick={startTryOn}
+                        disabled={!userPhotoUrl}
+                        className="px-12 py-4 bg-admin-gold text-black text-[12px] uppercase font-bold tracking-[0.3em] hover:bg-[#c9a84c] disabled:opacity-30 disabled:bg-white/10 disabled:text-white transition-all rounded-sm shadow-[0_0_20px_rgba(201,168,76,0.2)] disabled:shadow-none"
                       >
-                        <div className="w-10 h-10 rounded-full bg-white" />
+                        Start Virtual Try-On
                       </button>
                     </div>
                   </div>
@@ -254,9 +233,9 @@ const TryOnModal: React.FC<TryOnModalProps> = ({
                 {/* Processing */}
                 {mode === 'processing' && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 p-8">
-                    {userPhoto && (
+                    {userPhotoUrl && (
                       <div className="relative w-full h-full">
-                        <img src={userPhoto} alt="Processing" className="w-full h-full object-cover opacity-40" />
+                        <img src={userPhotoUrl} alt="Processing" className="w-full h-full object-cover opacity-40" />
                         {/* AI scan animation */}
                         <div
                           className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#8b7355] to-transparent"
@@ -307,8 +286,7 @@ const TryOnModal: React.FC<TryOnModalProps> = ({
                   </div>
                 )}
 
-                {/* Hidden canvas & file input */}
-                <canvas ref={canvasRef} className="hidden" />
+                {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
                   type="file"

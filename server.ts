@@ -91,6 +91,21 @@ async function startServer() {
     total: z.number().nonnegative('Total must be zero or positive'),
     items: z.array(z.any()).min(1, 'At least one item is required in the order'),
   });
+
+  const ServiceSchema = z.object({
+    title: z.string().min(1, 'Title is required'),
+    description: z.string().optional().nullable(),
+    image_url: z.string().url('Must be a valid URL').optional().nullable(),
+    link: z.string().optional().nullable(),
+  });
+
+  const ContactSchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    email: z.string().email('Valid email is required'),
+    subject: z.string().optional().nullable(),
+    message: z.string().min(1, 'Message is required'),
+    is_read: z.boolean().default(false).optional(),
+  });
   // ----------------------------------
 
   // Virtual Try-On API Route
@@ -279,6 +294,95 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  // Services Endpoints
+  app.get("/api/services", async (req: any, res: any, next: any) => {
+    try {
+      const { data, error } = await supabase.from('services').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.post("/api/services", async (req: any, res: any, next: any) => {
+    try {
+      const validatedData = ServiceSchema.parse(req.body);
+      const { error } = await supabase.from('services').insert([validatedData]);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.put("/api/services/:id", async (req: any, res: any, next: any) => {
+    try {
+      const { id } = req.params;
+      const validatedData = ServiceSchema.parse(req.body);
+      const { error } = await supabase.from('services').update(validatedData).eq('id', id);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.delete("/api/services/:id", async (req: any, res: any, next: any) => {
+    try {
+      const { id } = req.params;
+      const { error } = await supabase.from('services').delete().eq('id', id);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  // Contact Endpoints
+  app.get("/api/contact", async (req: any, res: any, next: any) => {
+    try {
+      const { data, error } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.post("/api/contact", async (req: any, res: any, next: any) => {
+    try {
+      const validatedData = ContactSchema.parse(req.body);
+      const { error } = await supabase.from('contact_messages').insert([validatedData]);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.put("/api/contact/:id", async (req: any, res: any, next: any) => {
+    try {
+      const { id } = req.params;
+      const { error } = await supabase.from('contact_messages').update({ is_read: req.body.is_read }).eq('id', id);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.delete("/api/contact/:id", async (req: any, res: any, next: any) => {
+    try {
+      const { id } = req.params;
+      const { error } = await supabase.from('contact_messages').delete().eq('id', id);
       if (error) throw error;
       res.json({ success: true });
     } catch (err: any) {

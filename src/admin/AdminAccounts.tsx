@@ -33,10 +33,10 @@ interface AdminAccount {
 }
 
 const mockAdmins: AdminAccount[] = [
-  { id: 1, name: 'Admin Tom', email: 'tom@zelori.com', role: 'Super Admin', status: 'Active', lastLogin: '2 hours ago', twoFactor: true },
-  { id: 2, name: 'Editor Sarah', email: 'sarah@zelori.com', role: 'Editor', status: 'Active', lastLogin: '5 hours ago', twoFactor: true },
-  { id: 3, name: 'Support Mike', email: 'mike@zelori.com', role: 'Support', status: 'Inactive', lastLogin: '1 day ago', twoFactor: false },
-  { id: 4, name: 'Admin Jane', email: 'jane@zelori.com', role: 'Super Admin', status: 'Active', lastLogin: '10 mins ago', twoFactor: true },
+  { id: 1, name: 'Admin Tom', email: 'tom@veston.com', role: 'Super Admin', status: 'Active', lastLogin: '2 hours ago', twoFactor: true },
+  { id: 2, name: 'Editor Sarah', email: 'sarah@veston.com', role: 'Editor', status: 'Active', lastLogin: '5 hours ago', twoFactor: true },
+  { id: 3, name: 'Support Mike', email: 'mike@veston.com', role: 'Support', status: 'Inactive', lastLogin: '1 day ago', twoFactor: false },
+  { id: 4, name: 'Admin Jane', email: 'jane@veston.com', role: 'Super Admin', status: 'Active', lastLogin: '10 mins ago', twoFactor: true },
 ];
 
 const AdminAccounts: React.FC = () => {
@@ -217,7 +217,7 @@ const AdminAccounts: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Email Address</label>
-                      <input type="email" className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" placeholder="christian@zelori.com" />
+                      <input type="email" className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" placeholder="christian@veston.com" />
                     </div>
                   </div>
                 </section>
@@ -262,7 +262,7 @@ const AdminAccounts: React.FC = () => {
                   <div className="space-y-4">
                     <div className="p-6 bg-admin-gold/5 border border-admin-gold/10 space-y-2">
                       <p className="text-[10px] uppercase tracking-widest font-bold opacity-40">Temporary Password</p>
-                      <p className="text-sm font-mono text-admin-gold">ZELORI-TEMP-8821-X</p>
+                      <p className="text-sm font-mono text-admin-gold">VESTON-TEMP-8821-X</p>
                       <p className="text-[8px] uppercase tracking-widest opacity-30 mt-2 italic">User will be prompted to change this on first login</p>
                     </div>
                   </div>

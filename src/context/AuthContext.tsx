@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type UserRole = 'user' | 'admin';
@@ -24,26 +25,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('zelori_user');
+    const savedUser = localStorage.getItem('veston_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
   }, []);
 
   const login = async (email: string, password: string) => {
+    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@zelori.com';
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
     // Simulate API call
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
-        // Special case for admin login for demo purposes
-        if (email === 'admin@zelori.com' && password === 'admin123') {
+        // Special case for admin login
+        if (email === adminEmail && password === adminPassword) {
           const adminUser: User = {
             id: 'admin-1',
-            email: 'admin@zelori.com',
-            name: 'Zelori Admin',
+            email: adminEmail,
+            name: 'Admin',
             role: 'admin'
           };
           setUser(adminUser);
-          localStorage.setItem('zelori_user', JSON.stringify(adminUser));
+          localStorage.setItem('veston_user', JSON.stringify(adminUser));
           resolve();
         } else if (email && password) {
           const regularUser: User = {
@@ -53,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: 'user'
           };
           setUser(regularUser);
-          localStorage.setItem('zelori_user', JSON.stringify(regularUser));
+          localStorage.setItem('veston_user', JSON.stringify(regularUser));
           resolve();
         } else {
           reject(new Error('Invalid credentials'));
@@ -72,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: 'user'
         };
         setUser(newUser);
-        localStorage.setItem('zelori_user', JSON.stringify(newUser));
+        localStorage.setItem('veston_user', JSON.stringify(newUser));
         resolve();
       }, 800);
     });
@@ -80,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('zelori_user');
+    localStorage.removeItem('veston_user');
   };
 
   return (
