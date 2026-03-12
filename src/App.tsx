@@ -10,6 +10,7 @@ import {
   Plus,
   Minus,
   Trash2,
+  Heart,
   Sparkles,
   Send,
   Loader2,
@@ -50,6 +51,9 @@ import Signup from './pages/Signup';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { cn } from './lib/utils';
 import TryOnModal from './components/TryOnModal';
+import QuickViewModal from './components/QuickViewModal';
+import ProductZoom from './components/ProductZoom';
+import OurServices from './pages/OurServices';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
@@ -148,6 +152,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/services" element={<OurServices />} />
           <Route path="/admin" element={
             <ProtectedRoute adminOnly>
               <AdminLayout />
@@ -221,6 +226,9 @@ function MainApp() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [wishlist, setWishlist] = useState<Product[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
+  const [isGiftWrapped, setIsGiftWrapped] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -230,6 +238,10 @@ function MainApp() {
   const [isTryOnOpen, setIsTryOnOpen] = useState(false);
   const [isBuyNowOpen, setIsBuyNowOpen] = useState(false);
   const [isSizeChartOpen, setIsSizeChartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState<1 | 2 | 3>(1);
+  const [discount, setDiscount] = useState(0);
+  const [couponInput, setCouponInput] = useState('');
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [buyQuantity, setBuyQuantity] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -241,9 +253,11 @@ function MainApp() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [addingToCartId, setAddingToCartId] = useState<number | null>(null);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'info' } | null>(null);
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { role: 'model', text: "Hello! I'm your personal Vogue & Verve stylist. How can I help you elevate your look today?" }
+    { role: 'model', text: "Hello! I'm your personal VESTON AI stylist. How can I help you elevate your look today?" }
   ]);
   const [userInput, setUserInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -269,6 +283,43 @@ function MainApp() {
       rainAudioRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const savedWishlist = localStorage.getItem('vv_wishlist');
+    if (savedWishlist) {
+      try { setWishlist(JSON.parse(savedWishlist)); } catch (e) {}
+    }
+  }, []);
+
+  const toggleWishlist = (product: Product) => {
+    setWishlist(prev => {
+      const isWishlisted = prev.some(item => item.id === product.id);
+      const newWishlist = isWishlisted
+        ? prev.filter(item => item.id !== product.id)
+        : [...prev, product];
+      localStorage.setItem('vv_wishlist', JSON.stringify(newWishlist));
+      showNotification(isWishlisted ? `Removed ${product.name} from wishlist` : `Added ${product.name} to wishlist`, 'success');
+      return newWishlist;
+    });
+  };
+
+  useEffect(() => {
+    const savedRV = localStorage.getItem('vv_recently_viewed');
+    if (savedRV) {
+      try { setRecentlyViewed(JSON.parse(savedRV)); } catch (e) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedProduct) {
+      setRecentlyViewed(prev => {
+        const filtered = prev.filter(p => p.id !== selectedProduct.id);
+        const newRV = [selectedProduct, ...filtered].slice(0, 8);
+        localStorage.setItem('vv_recently_viewed', JSON.stringify(newRV));
+        return newRV;
+      });
+    }
+  }, [selectedProduct]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -417,21 +468,26 @@ function MainApp() {
     }));
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
+    setIsCartOpen(false);
+    setCheckoutStep(1);
+    setIsCheckoutOpen(true);
+  };
+
+  const processOrder = async () => {
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'customer@example.com',
-          total: cartTotal,
+          total: finalTotal,
           items: cart
         })
       });
       if (response.ok) {
         setCart([]);
-        setIsCartOpen(false);
-        showNotification("Order placed successfully! Check your email for details.");
+        setCheckoutStep(3);
       }
     } catch (error) {
       console.error(error);
@@ -452,6 +508,19 @@ function MainApp() {
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const discountAmount = cartTotal * discount;
+  const finalTotal = cartTotal - discountAmount + (isGiftWrapped ? 15 : 0);
+
+  const handleApplyCoupon = () => {
+    const code = couponInput.toUpperCase();
+    if (code === 'VESTON10' || code === 'TRYOVA10') {
+      setDiscount(0.1);
+      showNotification('10% Discount applied!', 'success');
+      setCouponInput('');
+    } else {
+      showNotification('Invalid promo code.', 'info');
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!userInput.trim()) return;
@@ -472,8 +541,12 @@ function MainApp() {
           mockResponse = "Our premium pieces range from $89 to $250. Each item is crafted with the finest materials like silk, cashmere, and Italian wool.";
         } else if (input.includes('size') || input.includes('fit')) {
           mockResponse = "We offer a range of sizes from XS to XXL. Most of our tailored pieces follow standard European sizing for a precision fit.";
+        } else if (input.includes('try') || input.includes('try-on') || input.includes('virtual')) {
+          mockResponse = "Our AI-powered Virtual Try-On lets you see how any outfit looks on your own photo! Just select a product and tap Virtual Try-On. It's powered by VESTON AI — no camera permissions needed for upload mode.";
         } else if (input.includes('hello') || input.includes('hi')) {
-          mockResponse = "Welcome to Vogue & Verve. I am your personal style concierge. How can I assist your fashion journey today?";
+          mockResponse = "Welcome to VESTON. I am your personal AI style concierge — powered by NEXARA Technology Group. How can I assist your fashion journey today?";
+        } else if (input.includes('service') || input.includes('company') || input.includes('about')) {
+          mockResponse = "VESTON is powered by NEXARA Technology Group. We specialize in AI-driven virtual fashion try-on technology. Visit our 'Our Services' page from the navigation menu to learn our full story!";
         }
 
         setChatMessages([...newMessages, { role: 'model', text: mockResponse }]);
@@ -487,7 +560,7 @@ function MainApp() {
         model: "gemini-2.5-flash",
         contents: newMessages.map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] })),
         config: {
-          systemInstruction: "You are a high-end fashion stylist for 'Vogue & Verve', a luxury ecommerce brand. Your tone is sophisticated, helpful, and trend-aware. Recommend products from the catalog if relevant. The catalog includes: Midnight Velvet Blazer ($249.99), Silk Slip Dress ($189.00), Cashmere Turtleneck ($159.50), Tailored Wool Trousers ($129.00), Leather Chelsea Boots ($210.00), Oversized Linen Shirt ($89.00)."
+          systemInstruction: "You are a high-end AI fashion stylist for 'VESTON', a luxury ecommerce brand by NEXARA Technology Group. Your tone is sophisticated, helpful, and trend-aware. Recommend products from the catalog if relevant. The catalog includes: Midnight Velvet Blazer ($249.99), Silk Slip Dress ($189.00), Cashmere Turtleneck ($159.50), Tailored Wool Trousers ($129.00), Leather Chelsea Boots ($210.00), Oversized Linen Shirt ($89.00)."
         }
       });
 
@@ -553,6 +626,7 @@ function MainApp() {
                     <button onClick={() => { setActiveCategory('All'); scrollToProducts(); setIsNavMenuOpen(false); }} className="w-full text-left px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-colors">Women</button>
                     <button onClick={() => { setActiveCategory('All'); scrollToProducts(); setIsNavMenuOpen(false); }} className="w-full text-left px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-colors">Men</button>
                     <button onClick={() => { scrollToFooter(); setIsNavMenuOpen(false); }} className="w-full text-left px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-colors">Maison</button>
+                    <Link to="/services" onClick={() => setIsNavMenuOpen(false)} className="block w-full text-left px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-colors text-[#8b7355] border-t border-black/5">Our Services</Link>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -562,11 +636,11 @@ function MainApp() {
           <h1
             onClick={() => { setSelectedProduct(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className={cn(
-              "text-sm sm:text-xl md:text-3xl font-serif font-bold tracking-[0.1em] sm:tracking-[0.15em] cursor-pointer absolute left-1/2 -translate-x-1/2 transition-colors duration-700 whitespace-nowrap",
+              "text-sm sm:text-xl md:text-4xl font-serif font-bold tracking-[0.25em] sm:tracking-[0.3em] cursor-pointer absolute left-1/2 -translate-x-1/2 transition-colors duration-700 whitespace-nowrap",
               !isScrolled && !selectedProduct ? "text-white" : "text-black"
             )}
           >
-            VOGUE & VERVE
+            VESTON
           </h1>
 
           <div className={cn("flex items-center gap-2 sm:gap-4 md:gap-8", !isScrolled && !selectedProduct ? "text-white" : "text-black")}>
@@ -724,7 +798,7 @@ function MainApp() {
                           <User size={40} className="opacity-20" />
                         </div>
                         <div className="space-y-2">
-                          <h4 className="text-xl font-serif">Welcome to Zelori</h4>
+                          <h4 className="text-xl font-serif">Welcome to VESTON</h4>
                           <p className="text-xs opacity-50 uppercase tracking-widest">Sign in to manage your orders and profile</p>
                         </div>
                         <div className="flex flex-col gap-4">
@@ -805,28 +879,48 @@ function MainApp() {
                 {profileView === 'orders' && (
                   <div className="space-y-6">
                     {[
-                      { id: '#VV-9821', date: 'Oct 12, 2023', total: 438.99, status: 'Delivered' },
-                      { id: '#VV-9745', date: 'Sep 28, 2023', total: 189.00, status: 'Shipped' }
+                      { id: '12849', date: 'Oct 12, 2026', status: 'Shipped', step: 2, item: 'Midnight Velvet Blazer', img: 'https://images.unsplash.com/photo-1591561954557-26941169b49e?auto=format&fit=crop&q=80&w=800', price: 249.99 },
+                      { id: '11920', date: 'Sep 28, 2026', status: 'Delivered', step: 3, item: 'Silk Slip Dress', img: 'https://images.unsplash.com/photo-1539008835657-9e8e9680c956?auto=format&fit=crop&q=80&w=800', price: 189.00 }
                     ].map(order => (
-                      <div key={order.id} className="p-6 border border-black/5 bg-brand-muted/30">
-                        <div className="flex justify-between items-start mb-4">
+                      <div key={order.id} className="border border-black/10 p-6">
+                        <div className="flex justify-between items-start mb-6 border-b border-black/5 pb-4">
                           <div>
-                            <p className="text-[10px] uppercase tracking-widest font-bold opacity-40 mb-1">Order ID</p>
-                            <p className="text-sm font-bold">{order.id}</p>
+                            <p className="text-[10px] uppercase tracking-widest font-bold opacity-40 mb-1">Order #VV-{order.id}</p>
+                            <p className="text-sm">Placed on {order.date}</p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-[10px] uppercase tracking-widest font-bold opacity-40 mb-1">Status</p>
-                            <span className="text-[10px] uppercase tracking-widest font-bold px-2 py-1 bg-emerald-100 text-emerald-700">
-                              {order.status}
-                            </span>
+                          <span className="text-[10px] uppercase tracking-widest font-bold text-brand-bg bg-brand-bg/5 px-3 py-1">{order.status}</span>
+                        </div>
+                        <div className="flex gap-4">
+                          <img src={order.img} className="w-16 h-20 object-cover" referrerPolicy="no-referrer" alt={order.item} />
+                          <div className="flex flex-col justify-center">
+                            <p className="font-bold text-sm mb-1">{order.item}</p>
+                            <p className="text-xs opacity-60">Qty: 1 · ${order.price.toFixed(2)}</p>
                           </div>
                         </div>
-                        <div className="flex justify-between items-end">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-widest font-bold opacity-40 mb-1">Date</p>
-                            <p className="text-xs">{order.date}</p>
+                        
+                        {/* Tracking Timeline */}
+                        <div className="mt-8 pt-6 border-t border-black/5">
+                          <div className="flex justify-between items-center relative px-2">
+                            <div className="absolute top-[5px] left-4 right-4 h-px bg-black/10 -z-10" />
+                            {['Placed', 'Confirmed', 'Shipped', 'Delivered'].map((status, i) => (
+                              <div key={status} className="flex flex-col items-center bg-white px-2 cursor-help group" title={`Status: ${status}`}>
+                                <div className={cn(
+                                  "w-2.5 h-2.5 rounded-full mb-3 outline outline-2 outline-white box-content transition-colors",
+                                  i <= order.step ? "bg-brand-bg" : "bg-black/10"
+                                )} />
+                                <span className={cn(
+                                  "text-[8px] uppercase tracking-[0.2em] font-bold transition-opacity",
+                                  i <= order.step ? "opacity-100" : "opacity-30 group-hover:opacity-50"
+                                )}>{status}</span>
+                              </div>
+                            ))}
                           </div>
-                          <p className="text-lg font-serif italic">${order.total.toFixed(2)}</p>
+                        </div>
+                        <div className="mt-6 flex gap-4">
+                          <button onClick={() => showNotification("Receipt downloaded.", "success")} className="text-[9px] uppercase tracking-[0.2em] font-bold border border-black/10 px-4 py-2 hover:bg-black/5 transition-colors">Download Receipt</button>
+                          {order.status === 'Delivered' && (
+                            <button onClick={() => showNotification("Initiating return flow...", "info")} className="text-[9px] uppercase tracking-[0.2em] font-bold border border-transparent text-black/40 hover:text-black transition-colors">Return Item</button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -838,19 +932,22 @@ function MainApp() {
 
                 {profileView === 'wishlist' && (
                   <div className="grid grid-cols-2 gap-6">
-                    {products.slice(0, 2).map(product => (
-                      <div key={product.id} className="group">
+                    {wishlist.map(product => (
+                      <div key={product.id} className="group cursor-pointer" onClick={() => { setSelectedProduct(product); setIsProfileOpen(false); }}>
                         <div className="aspect-[3/4] bg-brand-muted overflow-hidden relative mb-3">
                           <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                          <button className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-sm hover:bg-white">
-                            <Trash2 size={14} className="text-red-500" />
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); toggleWishlist(product); }}
+                            className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-sm hover:bg-white transition-colors"
+                          >
+                            <Heart size={14} className="fill-brand-bg text-brand-bg" />
                           </button>
                         </div>
                         <h4 className="text-[10px] uppercase tracking-widest font-bold mb-1 truncate">{product.name}</h4>
                         <p className="text-xs opacity-50">${product.price.toFixed(2)}</p>
                       </div>
                     ))}
-                    {products.length === 0 && (
+                    {wishlist.length === 0 && (
                       <div className="col-span-2 py-20 text-center opacity-40 italic font-serif">
                         Your wishlist is currently empty.
                       </div>
@@ -945,32 +1042,78 @@ function MainApp() {
                   loop
                   muted={isMuted}
                   playsInline
-                  className="absolute inset-0 w-full h-full object-cover scale-105"
+                  className="absolute inset-0 w-full h-full object-cover"
                 >
-                  <source src="https://player.vimeo.com/external/517089491.hd.mp4?s=756387063499f575796f69986326d95368366479&profile_id=175" type="video/mp4" />
+                  <source src="/homepage-video.mp4" type="video/mp4" />
                 </video>
+
+                {/* Cinematic gradient overlays for luxury depth */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/70" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30" />
 
                 {/* Mute Toggle */}
                 <button
                   onClick={toggleMute}
-                  className="absolute bottom-12 right-12 z-20 p-4 border border-white/20 rounded-full text-white hover:bg-white hover:text-black transition-all duration-500"
+                  className="absolute bottom-12 right-12 z-20 p-4 border border-white/20 backdrop-blur-sm text-white hover:bg-white/10 transition-all duration-500"
                 >
                   {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
                 </button>
-                <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white">
+
+                {/* Hero Content */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10">
                   <motion.div
-                    initial={{ opacity: 0, y: 50 }}
+                    initial={{ opacity: 0, y: 60 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-                    className="text-center"
+                    transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
+                    className="text-center px-6"
                   >
-                    <span className="uppercase tracking-[0.6em] text-[10px] font-bold mb-8 block opacity-80">Spring Summer 2026</span>
-                    <h2 className="text-5xl md:text-[10rem] font-serif mb-12 tracking-tighter leading-[0.85] font-light">
-                      The New <br />
-                      <span className="italic font-normal">Elegance</span>
+                    {/* Brand monogram line */}
+                    <motion.div
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{ duration: 1.2, delay: 0.3 }}
+                      className="flex items-center justify-center gap-6 mb-10"
+                    >
+                      <div className="h-px w-16 bg-white/40" />
+                      <span className="uppercase tracking-[0.8em] text-[9px] font-bold text-white/70">Spring · Summer 2026</span>
+                      <div className="h-px w-16 bg-white/40" />
+                    </motion.div>
+
+                    <h2 className="text-4xl md:text-8xl font-serif mb-6 leading-[1.05] font-light max-w-5xl mx-auto">
+                      See how every outfit
+                      <span className="italic font-normal block mt-2"> looks on you.</span>
                     </h2>
-                    <div className="flex flex-col md:flex-row gap-6 justify-center items-center mt-12">
-                    </div>
+
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.8, duration: 1.2 }}
+                      className="text-white/60 text-sm tracking-[0.3em] uppercase mb-16 max-w-sm mx-auto"
+                    >
+                      AI-Powered Virtual Try-On
+                    </motion.p>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.0, duration: 1 }}
+                      className="flex flex-col md:flex-row gap-5 justify-center items-center"
+                    >
+                      <button
+                        onClick={scrollToProducts}
+                        className="group relative px-14 py-5 bg-white text-black text-[10px] uppercase tracking-[0.5em] font-bold overflow-hidden hover:bg-transparent hover:text-white border border-transparent hover:border-white transition-all duration-700 min-w-[220px]"
+                      >
+                        <span className="relative z-10">Explore Collection</span>
+                        <div className="absolute inset-0 bg-white transition-transform duration-700 group-hover:-translate-y-full" />
+                      </button>
+                      <button
+                        onClick={() => { setIsChatOpen(true); }}
+                        className="group px-14 py-5 border border-white/40 text-white text-[10px] uppercase tracking-[0.5em] font-bold hover:border-white hover:bg-white/10 backdrop-blur-sm transition-all duration-500 min-w-[220px] flex items-center justify-center gap-3"
+                      >
+                        <Camera size={14} />
+                        <span>Virtual Try&#8209;On</span>
+                      </button>
+                    </motion.div>
                   </motion.div>
                 </div>
 
@@ -978,12 +1121,36 @@ function MainApp() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 2, duration: 1 }}
-                  className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4"
+                  transition={{ delay: 2.5, duration: 1 }}
+                  className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-10"
                 >
-                  <div className="w-[1px] h-12 bg-gradient-to-b from-white to-transparent" />
-                  <span className="text-[8px] uppercase tracking-[0.5em] text-white/40 font-bold">Scroll</span>
+                  <motion.div
+                    animate={{ y: [0, 8, 0] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                    className="w-px h-14 bg-gradient-to-b from-white/60 to-transparent"
+                  />
+                  <span className="text-[8px] uppercase tracking-[0.7em] text-white/30 font-bold">Scroll</span>
                 </motion.div>
+              </section>
+
+              {/* Trust Badges / Features Bar */}
+              <section className="bg-brand-bg text-brand-paper">
+                <div className="max-w-[1800px] mx-auto px-8 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {[
+                    { icon: '✦', title: 'Free Express Shipping', sub: 'On all orders over $200' },
+                    { icon: '↩', title: '30-Day Returns', sub: 'Hassle-free returns policy' },
+                    { icon: '🔒', title: 'Secure Payments', sub: 'SSL encrypted checkout' },
+                    { icon: '✦', title: 'AI Virtual Try-On', sub: 'See before you buy' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-4 py-2">
+                      <span className="text-brand-accent text-lg">{item.icon}</span>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest font-bold">{item.title}</p>
+                        <p className="text-[9px] text-brand-paper/40 mt-0.5">{item.sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </section>
 
               {/* Maison Highlight - Split Layout */}
@@ -1180,7 +1347,7 @@ function MainApp() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}
-                        className="group cursor-pointer"
+                        className="group cursor-pointer product-card-hover"
                         onClick={() => { setSelectedProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       >
                         <div className="relative aspect-[4/5] overflow-hidden bg-brand-muted mb-8">
@@ -1189,6 +1356,19 @@ function MainApp() {
                             alt={product.name}
                             className="group-hover:scale-110 transition-transform duration-1000"
                           />
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); toggleWishlist(product); }} 
+                            className="absolute top-4 right-4 z-10 p-2 bg-white/80 backdrop-blur hover:bg-white flex items-center justify-center rounded-none border border-transparent hover:border-black/10 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Heart size={16} className={cn(wishlist.some(w => w.id === product.id) && "fill-brand-bg text-brand-bg")} />
+                          </button>
+                          {/* Quick View Button */}
+                          <button
+                            className="quick-view-btn"
+                            onClick={(e) => { e.stopPropagation(); setQuickViewProduct(product); setIsQuickViewOpen(true); }}
+                          >
+                            Quick View
+                          </button>
                         </div>
                         <div className="text-center">
                           <h4 className="text-sm uppercase tracking-widest font-bold mb-2">{product.name}</h4>
@@ -1211,6 +1391,45 @@ function MainApp() {
                 )}
               </section>
 
+              {/* Recently Viewed on Homepage */}
+              {recentlyViewed.length > 0 && (
+                <section className="max-w-[1600px] mx-auto px-8 pb-24">
+                  <div className="flex items-center justify-between mb-12">
+                    <div>
+                      <span className="uppercase tracking-[0.4em] text-[10px] font-bold opacity-40 mb-3 block">Continue Exploring</span>
+                      <h3 className="text-3xl font-serif italic">Recently Viewed</h3>
+                    </div>
+                    <button
+                      onClick={() => { setRecentlyViewed([]); localStorage.removeItem('vv_recently_viewed'); }}
+                      className="text-[9px] uppercase tracking-widest font-bold opacity-30 hover:opacity-80 transition-opacity"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="rv-scroll">
+                    {recentlyViewed.slice(0, 8).map(product => (
+                      <div
+                        key={'rv-h-'+product.id}
+                        className="w-52 group cursor-pointer product-card-hover flex-shrink-0"
+                        onClick={() => { setSelectedProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      >
+                        <div className="w-full aspect-[3/4] overflow-hidden bg-brand-muted mb-4 relative">
+                          <ProductImage src={product.image} alt={product.name} className="group-hover:scale-105 transition-transform duration-700" />
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setQuickViewProduct(product); setIsQuickViewOpen(true); }}
+                            className="quick-view-btn"
+                          >
+                            Quick View
+                          </button>
+                        </div>
+                        <h4 className="text-[10px] uppercase tracking-widest font-bold mb-1 truncate">{product.name}</h4>
+                        <p className="text-xs font-serif opacity-50">${product.price.toFixed(2)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               {/* Heritage Section */}
               <section className="bg-brand-muted py-32">
                 <div className="max-w-7xl mx-auto px-8 grid md:grid-cols-2 gap-24 items-center">
@@ -1221,9 +1440,9 @@ function MainApp() {
                     <span className="uppercase tracking-[0.4em] text-[10px] font-bold opacity-40 mb-6 block">The Maison</span>
                     <h2 className="text-6xl font-serif mb-10 leading-tight">A Legacy of <br /><span className="italic">Craftsmanship</span></h2>
                     <p className="text-brand-bg/60 text-lg leading-relaxed mb-12">
-                      Since our inception, Vogue & Verve has stood for the pinnacle of luxury. Every piece is a testament to the artisans who pour their soul into every stitch, ensuring that elegance is not just seen, but felt.
+                      Since our inception, VESTON has stood for the pinnacle of luxury. Every piece is a testament to the artisans who pour their soul into every stitch, ensuring that elegance is not just seen, but felt.
                     </p>
-                    <button className="btn-outline">Explore our Story</button>
+                    <Link to="/services" className="btn-outline inline-block text-center">Explore our Story</Link>
                   </div>
                 </div>
               </section>
@@ -1247,10 +1466,10 @@ function MainApp() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-24">
-                {/* Product Images */}
+                {/* Product Images — with ProductZoom */}
                 <div className="space-y-8">
-                  <div className="aspect-[4/5] rounded-none overflow-hidden bg-brand-muted relative">
-                    {selectedProduct.video ? (
+                  {selectedProduct.video ? (
+                    <div className="aspect-[4/5] rounded-none overflow-hidden bg-brand-muted relative">
                       <video
                         src={selectedProduct.video}
                         autoPlay
@@ -1259,19 +1478,19 @@ function MainApp() {
                         playsInline
                         className="w-full h-full object-cover"
                       />
-                    ) : (
-                      <ProductImage
-                        src={selectedProduct.image}
-                        alt={selectedProduct.name}
-                      />
-                    )}
-                    {selectedProduct.video && (
                       <div className="absolute top-6 right-6 bg-black/40 backdrop-blur-md px-4 py-2 text-[8px] uppercase tracking-[0.3em] font-bold text-white border border-white/10">
                         Cinematic View 1
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <ProductZoom
+                      images={[selectedProduct.image, selectedProduct.image2, selectedProduct.image3, selectedProduct.image4, selectedProduct.image5].filter(Boolean) as string[]}
+                      alt={selectedProduct.name}
+                    />
+                  )}
+                  <div className="aspect-[4/5]" style={{ display: 'none' }}>
 
+                  </div>
                   {selectedProduct.video2 && (
                     <div className="aspect-[4/5] rounded-none overflow-hidden bg-brand-muted relative">
                       <video
@@ -1287,17 +1506,6 @@ function MainApp() {
                       </div>
                     </div>
                   )}
-
-                  <div className="grid grid-cols-2 gap-8">
-                    {[selectedProduct.image, selectedProduct.image2, selectedProduct.image3, selectedProduct.image4, selectedProduct.image5]
-                      .filter(Boolean)
-                      .map((img, i) => (
-                        <div key={i} className="aspect-[4/5] rounded-none overflow-hidden bg-brand-muted border border-black/5">
-                          <ProductImage src={img!} alt={`Detail ${i + 1}`} />
-                        </div>
-                      ))
-                    }
-                  </div>
                 </div>
 
                 {/* Product Info */}
@@ -1305,10 +1513,14 @@ function MainApp() {
                   <div className="mb-12">
                     <p className="text-[10px] uppercase tracking-[0.4em] text-brand-bg/40 font-bold mb-6">{selectedProduct.category}</p>
                     <h2 className="text-6xl font-serif mb-8 leading-tight">{selectedProduct.name}</h2>
-                    <p className="text-4xl font-serif mb-10 opacity-20">${selectedProduct.price.toFixed(2)}</p>
+                    <p className="text-4xl font-serif mb-6 opacity-20">${selectedProduct.price.toFixed(2)}</p>
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#fff8eb] text-[#d97706] border border-[#fef3c7] mb-10">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#d97706] animate-pulse" />
+                      <span className="text-[9px] uppercase tracking-widest font-bold">Only {Math.floor(selectedProduct.price % 5) + 2} left in stock</span>
+                    </div>
                     <div className="h-px bg-black/5 w-full mb-10" />
                     <p className="text-brand-bg/60 text-sm leading-loose mb-12 max-w-md">
-                      {selectedProduct.description || "A masterpiece of modern design, this piece embodies the Vogue & Verve philosophy of timeless elegance and superior craftsmanship."}
+                      {selectedProduct.description || "A masterpiece of modern design, this piece embodies the TRYOVA philosophy of timeless elegance and superior craftsmanship."}
                     </p>
                   </div>
 
@@ -1368,6 +1580,13 @@ function MainApp() {
 
                   <div className="flex gap-4">
                     <button
+                      onClick={() => toggleWishlist(selectedProduct)}
+                      className="w-16 bg-white border border-brand-bg flex items-center justify-center hover:bg-brand-bg/5 transition-all"
+                      title={wishlist.some(w => w.id === selectedProduct.id) ? "Remove from Wishlist" : "Add to Wishlist"}
+                    >
+                      <Heart size={18} className={cn(wishlist.some(w => w.id === selectedProduct.id) && "fill-brand-bg text-brand-bg")} />
+                    </button>
+                    <button
                       onClick={() => addToCart(selectedProduct, buyQuantity)}
                       disabled={addingToCartId === selectedProduct.id}
                       className="flex-grow bg-white text-brand-bg border border-brand-bg py-5 rounded-none uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-bg hover:text-brand-paper transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1397,18 +1616,72 @@ function MainApp() {
                 </div>
               </div>
 
+              {/* Product Reviews */}
+              <div className="mt-32 border-t border-black/5 pt-24">
+                <div className="flex justify-between items-end mb-12">
+                  <div>
+                    <h3 className="text-2xl font-serif mb-4">Client Reviews</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <div key={star} className="text-brand-bg flex items-center justify-center">★</div>
+                        ))}
+                      </div>
+                      <span className="text-sm font-bold opacity-60">4.9 / 5.0  (128 Reviews)</span>
+                    </div>
+                  </div>
+                  <button onClick={() => showNotification("Review submissions are currently closed.", "info")} className="text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 hover:opacity-50 transition-opacity">
+                    Write a Review
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  {[
+                    { name: 'Eleanor V.', date: 'Oct 2026', title: 'Exceptional Quality', text: 'The attention to detail and craftsmanship are unparalleled. Truly a magnificent piece that elevates my entire wardrobe.' },
+                    { name: 'Sarah M.', date: 'Sep 2026', title: 'Perfect Fit', text: 'I used the virtual try-on feature and was amazed at how accurate the sizing turned out to be. The fabric feels luxurious.' },
+                    { name: 'Isabella R.', date: 'Aug 2026', title: 'A Masterpiece', text: 'From the unboxing experience to wearing it out, everything about this purchase felt premium. Worth every penny.' },
+                    { name: 'Chloe T.', date: 'Aug 2026', title: 'Stunning Design', text: 'Gets compliments every time I wear it out. The silhouette is very flattering.' }
+                  ].map((review, i) => (
+                    <div key={i} className="bg-brand-muted p-8">
+                      <div className="flex justify-between mb-6">
+                        <div className="flex gap-1 text-sm text-brand-bg">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <span key={star}>★</span>
+                          ))}
+                        </div>
+                        <span className="text-[10px] uppercase tracking-widest font-bold opacity-40">{review.date}</span>
+                      </div>
+                      <h4 className="font-serif text-lg mb-3">{review.title}</h4>
+                      <p className="text-sm leading-relaxed opacity-70 mb-6">{review.text}</p>
+                      <span className="text-[10px] uppercase tracking-widest font-bold">{review.name}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-12 text-center">
+                  <button className="text-[10px] uppercase tracking-widest font-bold border border-black/10 px-8 py-4 hover:border-brand-bg hover:bg-brand-bg hover:text-white transition-all">
+                    Load More Reviews
+                  </button>
+                </div>
+              </div>
+
               {/* Related Products Placeholder */}
               <div className="mt-32">
                 <h3 className="text-2xl font-serif mb-12">Complete the Look</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                   {products.filter(p => p.id !== selectedProduct.id).slice(0, 4).map(product => (
                     <div key={product.id} className="group cursor-pointer" onClick={() => { setSelectedProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden bg-white mb-4">
+                      <div className="aspect-[3/4] rounded-xl overflow-hidden bg-brand-muted mb-4 relative">
                         <ProductImage
                           src={product.image}
                           alt={product.name}
                           className="group-hover:scale-105 transition-transform"
                         />
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); toggleWishlist(product); }} 
+                          className="absolute top-2 right-2 z-10 p-2 bg-white/80 backdrop-blur hover:bg-white flex items-center justify-center rounded-none border border-transparent hover:border-black/10 transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <Heart size={14} className={cn(wishlist.some(w => w.id === product.id) && "fill-brand-bg text-brand-bg")} />
+                        </button>
                       </div>
                       <h4 className="text-sm font-medium">{product.name}</h4>
                       <p className="text-sm opacity-50">${product.price.toFixed(2)}</p>
@@ -1416,6 +1689,34 @@ function MainApp() {
                   ))}
                 </div>
               </div>
+
+              {/* Recently Viewed */}
+              {recentlyViewed.filter(p => p.id !== selectedProduct.id).length > 0 && (
+                <div className="mt-24 border-t border-black/5 pt-24">
+                  <h3 className="text-2xl font-serif mb-12 opacity-60">Recently Viewed</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                    {recentlyViewed.filter(p => p.id !== selectedProduct.id).slice(0, 4).map(product => (
+                      <div key={'rv-'+product.id} className="group cursor-pointer" onClick={() => { setSelectedProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                        <div className="aspect-[3/4] rounded-xl overflow-hidden bg-brand-muted mb-4 relative">
+                          <ProductImage
+                            src={product.image}
+                            alt={product.name}
+                            className="group-hover:scale-105 transition-transform"
+                          />
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); toggleWishlist(product); }} 
+                            className="absolute top-2 right-2 z-10 p-2 bg-white/80 backdrop-blur hover:bg-white flex items-center justify-center rounded-none border border-transparent hover:border-black/10 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Heart size={14} className={cn(wishlist.some(w => w.id === product.id) && "fill-brand-bg text-brand-bg")} />
+                          </button>
+                        </div>
+                        <h4 className="text-sm font-medium">{product.name}</h4>
+                        <p className="text-sm opacity-50">${product.price.toFixed(2)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1454,22 +1755,87 @@ function MainApp() {
         )}
       </main>
 
+      {/* Floating AI Chat Button */}
+      {!isChatOpen && !selectedProduct && (
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 1.5, type: 'spring' }}
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-8 right-8 z-[75] w-16 h-16 bg-brand-bg text-brand-paper rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform"
+          title="Chat with AI Stylist"
+        >
+          <Sparkles size={22} className="text-brand-accent" />
+        </motion.button>
+      )}
+
+      {/* Sticky Add-to-Bag bar on mobile when product is selected */}
+      {selectedProduct && (
+        <div className="fixed bottom-0 left-0 right-0 z-[60] md:hidden bg-white border-t border-black/10 p-4 flex gap-3 shadow-2xl">
+          <button
+            onClick={() => addToCart(selectedProduct, buyQuantity)}
+            className="flex-1 py-4 border border-brand-bg text-brand-bg text-[10px] uppercase tracking-widest font-bold"
+          >
+            Add to Bag
+          </button>
+          <button
+            onClick={() => setIsBuyNowOpen(true)}
+            className="flex-1 py-4 bg-brand-bg text-brand-paper text-[10px] uppercase tracking-widest font-bold"
+          >
+            Buy Now
+          </button>
+        </div>
+      )}
+
       {selectedProduct && (
         <TryOnModal
           isOpen={isTryOnOpen}
           onClose={() => setIsTryOnOpen(false)}
           garmentImageUrl={selectedProduct.image}
+          allGarments={products.slice(0, 10).map(p => ({ name: p.name, image: p.image, price: p.price }))}
         />
       )}
 
+      {/* Quick View Modal */}
+      <QuickViewModal
+        product={quickViewProduct}
+        isOpen={isQuickViewOpen}
+        onClose={() => setIsQuickViewOpen(false)}
+        onAddToCart={addToCart}
+        onToggleWishlist={toggleWishlist}
+        isWishlisted={!!quickViewProduct && wishlist.some(w => w.id === quickViewProduct.id)}
+        isAddingToCart={!!quickViewProduct && addingToCartId === quickViewProduct.id}
+        onViewDetails={(product) => { setSelectedProduct(product); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        onTryOn={() => { if (quickViewProduct) { setSelectedProduct(quickViewProduct); setIsTryOnOpen(true); setIsQuickViewOpen(false); } }}
+      />
+
       {/* Footer */}
-      <footer ref={footerRef} className="bg-white border-t border-black/5 py-32">
-        <div className="max-w-[1800px] mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-24">
-          <div className="col-span-1">
-            <h1 className="text-2xl font-serif font-bold tracking-[0.2em] mb-8">VOGUE & VERVE</h1>
-            <p className="text-xs uppercase tracking-widest text-brand-bg/40 leading-loose">
-              The pinnacle of luxury craftsmanship. <br />Defining elegance since 2026.
+      <footer ref={footerRef} className="bg-white border-t border-black/5 pt-32 pb-0">
+        <div className="max-w-[1800px] mx-auto px-8 grid grid-cols-1 md:grid-cols-5 gap-16 pb-24">
+          <div className="col-span-2">
+            <h1 className="text-3xl font-serif font-bold tracking-[0.35em] mb-8">VESTON</h1>
+            <p className="text-xs uppercase tracking-widest text-brand-bg/40 leading-loose mb-10">
+              The pinnacle of AI-powered luxury fashion. <br />A NEXARA Technology Group Company.
             </p>
+            {/* Social Media Links */}
+            <div className="flex gap-6">
+              {[
+                { label: 'IG', url: 'https://instagram.com' },
+                { label: 'TT', url: 'https://tiktok.com' },
+                { label: 'PI', url: 'https://pinterest.com' },
+                { label: 'YT', url: 'https://youtube.com' },
+              ].map(s => (
+                <a
+                  key={s.label}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-9 h-9 border border-black/10 flex items-center justify-center text-[8px] font-bold hover:bg-brand-bg hover:text-white hover:border-brand-bg transition-all duration-300"
+                >
+                  {s.label}
+                </a>
+              ))}
+            </div>
           </div>
           <div>
             <h5 className="text-[10px] uppercase tracking-[0.4em] font-bold mb-10">Universe</h5>
@@ -1477,22 +1843,24 @@ function MainApp() {
               <li><button onClick={() => { setActiveCategory('All'); scrollToProducts(); }} className="hover:text-brand-bg transition-colors">Women</button></li>
               <li><button onClick={() => { setActiveCategory('Outerwear'); scrollToProducts(); }} className="hover:text-brand-bg transition-colors">Men</button></li>
               <li><button onClick={() => { setActiveCategory('Dresses'); scrollToProducts(); }} className="hover:text-brand-bg transition-colors">Accessories</button></li>
-              <li><button onClick={() => showNotification("New collection arriving soon", "info")} className="hover:text-brand-bg transition-colors">Art of Living</button></li>
+              <li><button onClick={() => { setActiveCategory('All'); scrollToProducts(); }} className="hover:text-brand-bg transition-colors">New Arrivals</button></li>
+              <li><button onClick={() => showNotification('Art of Living collection arriving soon', 'info')} className="hover:text-brand-bg transition-colors">Art of Living</button></li>
             </ul>
           </div>
           <div>
             <h5 className="text-[10px] uppercase tracking-[0.4em] font-bold mb-10">Services</h5>
             <ul className="space-y-6 text-xs uppercase tracking-widest text-brand-bg/60">
-              <li><button onClick={() => showNotification("Complimentary shipping on all orders", "info")} className="hover:text-brand-bg transition-colors">Shipping</button></li>
-              <li><button onClick={() => showNotification("30-day returns policy", "info")} className="hover:text-brand-bg transition-colors">Returns</button></li>
-              <li><button onClick={() => showNotification("Contact our client advisors", "info")} className="hover:text-brand-bg transition-colors">Contact Us</button></li>
-              <li><button onClick={() => showNotification("Personalization services available", "info")} className="hover:text-brand-bg transition-colors">Care & Services</button></li>
+              <li><Link to="/services" className="hover:text-brand-bg transition-colors">Our Services</Link></li>
+              <li><button onClick={() => showNotification('Complimentary express shipping on orders over $200', 'info')} className="hover:text-brand-bg transition-colors">Shipping</button></li>
+              <li><button onClick={() => showNotification('30-day hassle-free returns policy', 'info')} className="hover:text-brand-bg transition-colors">Returns</button></li>
+              <li><button onClick={() => showNotification('Our advisors are available Mon–Sat 9am–6pm EST', 'info')} className="hover:text-brand-bg transition-colors">Contact Us</button></li>
+              <li><button onClick={() => setIsChatOpen(true)} className="hover:text-brand-bg transition-colors">AI Stylist</button></li>
             </ul>
           </div>
           <div>
             <h5 className="text-[10px] uppercase tracking-[0.4em] font-bold mb-10">Newsletter</h5>
-            <p className="text-xs uppercase tracking-widest text-brand-bg/40 mb-8 leading-loose">Subscribe to receive the latest news from the Maison.</p>
-            <form onSubmit={handleNewsletter} className="flex border-b border-black/20 pb-2">
+            <p className="text-xs uppercase tracking-widest text-brand-bg/40 mb-8 leading-loose">Subscribe to receive the latest from the Maison.</p>
+            <form onSubmit={handleNewsletter} className="flex border-b border-black/20 pb-2 mb-8">
               <input
                 type="email"
                 required
@@ -1503,14 +1871,29 @@ function MainApp() {
                 <ArrowRight size={16} />
               </button>
             </form>
+            <div className="space-y-3 text-[9px] uppercase tracking-widest text-brand-bg/30">
+              <div className="flex items-center gap-2"><span>🔒</span><span>Secure checkout — SSL encrypted</span></div>
+              <div className="flex items-center gap-2"><span>↩</span><span>30-day free returns</span></div>
+              <div className="flex items-center gap-2"><span>✦</span><span>Authenticity guaranteed</span></div>
+            </div>
           </div>
         </div>
-        <div className="max-w-[1800px] mx-auto px-8 mt-32 pt-12 border-t border-black/5 flex flex-col md:flex-row justify-between items-center gap-8 text-[9px] uppercase tracking-[0.3em] opacity-40 font-bold">
-          <p>© 2026 Vogue & Verve. All Rights Reserved.</p>
-          <div className="flex gap-12">
-            <button onClick={() => showNotification("Privacy Policy updated Feb 2026", "info")}>Privacy Policy</button>
-            <button onClick={() => showNotification("Terms of Service updated Feb 2026", "info")}>Terms of Service</button>
-            <button onClick={() => showNotification("Legal Notice", "info")}>Legal Notice</button>
+
+        {/* Footer Bottom Bar */}
+        <div className="border-t border-black/5 bg-brand-muted/30">
+          <div className="max-w-[1800px] mx-auto px-8 py-8 flex flex-col md:flex-row justify-between items-center gap-6 text-[9px] uppercase tracking-[0.3em] opacity-60 font-bold">
+            <p>© 2026 VESTON · NEXARA Group. All Rights Reserved.</p>
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              {['Visa', 'MC', 'Amex', 'Apple Pay', 'PayPal'].map(p => (
+                <span key={p} className="px-3 py-1 border border-black/10 text-[8px] font-bold rounded">{p}</span>
+              ))}
+            </div>
+            <div className="flex gap-8">
+              <button onClick={() => showNotification('Privacy Policy updated Feb 2026', 'info')}>Privacy Policy</button>
+              <button onClick={() => showNotification('Terms of Service updated Feb 2026', 'info')}>Terms</button>
+              <button onClick={() => showNotification('Accessibility Statement', 'info')}>Accessibility</button>
+              <button onClick={() => showNotification('Cookie Notice', 'info')}>Cookies</button>
+            </div>
           </div>
         </div>
       </footer>
@@ -1584,11 +1967,56 @@ function MainApp() {
 
               {cart.length > 0 && (
                 <div className="p-6 border-t border-black/5 space-y-4">
-                  <div className="flex justify-between items-center text-lg">
-                    <span className="font-serif">Subtotal</span>
-                    <span className="font-serif font-bold">${cartTotal.toFixed(2)}</span>
+                  <div className="flex gap-2 mb-4">
+                    <input 
+                      type="text" 
+                      placeholder="Promo Code (VESTON10)" 
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value)}
+                      className="flex-grow bg-brand-muted px-4 py-2 text-[10px] uppercase tracking-widest focus:outline-none focus:border-brand-bg border border-transparent transition-colors"
+                    />
+                    <button onClick={handleApplyCoupon} className="bg-brand-bg text-white px-4 py-2 text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-brand-bg/90 transition-all">
+                      Apply
+                    </button>
                   </div>
-                  <p className="text-[10px] text-brand-bg/40 uppercase tracking-widest text-center">Shipping & taxes calculated at checkout</p>
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <button 
+                      onClick={() => setIsGiftWrapped(!isGiftWrapped)}
+                      className="flex items-center gap-3 cursor-pointer group"
+                    >
+                      <div className={cn(
+                        "w-4 h-4 flex items-center justify-center transition-colors",
+                        isGiftWrapped ? "bg-brand-bg border border-brand-bg" : "border border-black/20 group-hover:border-brand-bg"
+                      )}>
+                        {isGiftWrapped && <CheckCircle2 size={12} className="text-white" />}
+                      </div>
+                      <span className="text-[10px] uppercase tracking-widest font-bold">Add Gift Wrapping</span>
+                    </button>
+                    <span className="text-[10px] uppercase font-bold opacity-40">+$15.00</span>
+                  </div>
+                  <div className="h-px w-full bg-black/5 my-4" />
+                  <div className="flex justify-between items-center text-sm opacity-60">
+                    <span className="font-serif">Subtotal</span>
+                    <span className="font-serif">${cartTotal.toFixed(2)}</span>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between items-center text-sm text-brand-accent font-bold">
+                      <span className="font-serif">Discount ({discount * 100}%)</span>
+                      <span className="font-serif">-${discountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {isGiftWrapped && (
+                    <div className="flex justify-between items-center text-sm opacity-60">
+                      <span className="font-serif">Gift Wrap</span>
+                      <span className="font-serif">$15.00</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-lg mt-2">
+                    <span className="font-serif">Total</span>
+                    <span className="font-serif font-bold">${finalTotal.toFixed(2)}</span>
+                  </div>
+                  <p className="text-[10px] text-brand-bg/40 uppercase tracking-widest text-center mt-4">Shipping & taxes calculated at checkout</p>
                   <button
                     onClick={handleCheckout}
                     className="w-full bg-brand-bg text-brand-paper py-5 rounded-none uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-bg/80 transition-all"
@@ -1737,6 +2165,134 @@ function MainApp() {
               >
                 Confirm Purchase — ${selectedProduct.price.toFixed(2)}
               </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Multi-step Checkout Modal */}
+      <AnimatePresence>
+        {isCheckoutOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => checkoutStep !== 3 && setIsCheckoutOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[130]"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white z-[140] flex flex-col max-h-[90vh] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 border-b border-black/5 flex justify-between items-center bg-brand-muted/30">
+                <h3 className="text-2xl font-serif">Checkout</h3>
+                {checkoutStep !== 3 && (
+                  <button onClick={() => setIsCheckoutOpen(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors">
+                    <X size={20} />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8">
+                {/* Stepper */}
+                <div className="flex items-center justify-between mb-12 relative px-4">
+                  <div className="absolute top-1/2 left-4 right-4 h-[1px] bg-black/10 -z-10" />
+                  {[1, 2, 3].map(step => (
+                    <div key={step} className="flex flex-col items-center gap-2 bg-white px-2">
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold uppercase transition-colors",
+                        checkoutStep >= step ? "bg-brand-bg text-white" : "bg-brand-muted text-brand-bg/40 border border-black/10"
+                      )}>
+                        {step < checkoutStep ? <CheckCircle2 size={14} /> : step}
+                      </div>
+                      <span className={cn(
+                        "text-[9px] uppercase tracking-widest font-bold",
+                        checkoutStep >= step ? "text-brand-bg" : "text-brand-bg/40"
+                      )}>
+                        {step === 1 ? 'Shipping' : step === 2 ? 'Payment' : 'Complete'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {checkoutStep === 1 && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <h4 className="font-serif text-lg mb-6">Shipping Information</h4>
+                    <div className="grid grid-cols-2 gap-6">
+                      <input type="text" placeholder="First Name" className="w-full bg-brand-muted px-4 py-3 text-sm focus:outline-none focus:border-brand-bg" />
+                      <input type="text" placeholder="Last Name" className="w-full bg-brand-muted px-4 py-3 text-sm focus:outline-none focus:border-brand-bg" />
+                    </div>
+                    <input type="email" placeholder="Email Address" className="w-full bg-brand-muted px-4 py-3 text-sm focus:outline-none focus:border-brand-bg" />
+                    <input type="text" placeholder="Street Address" className="w-full bg-brand-muted px-4 py-3 text-sm focus:outline-none focus:border-brand-bg" />
+                    <div className="grid grid-cols-3 gap-6">
+                      <input type="text" placeholder="City" className="col-span-1 bg-brand-muted px-4 py-3 text-sm focus:outline-none focus:border-brand-bg" />
+                      <input type="text" placeholder="State/Province" className="col-span-1 bg-brand-muted px-4 py-3 text-sm focus:outline-none focus:border-brand-bg" />
+                      <input type="text" placeholder="ZIP / Postal Code" className="col-span-1 bg-brand-muted px-4 py-3 text-sm focus:outline-none focus:border-brand-bg" />
+                    </div>
+                    <button onClick={() => setCheckoutStep(2)} className="w-full bg-brand-bg text-white py-4 mt-8 uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-bg/90 transition-colors">
+                      Continue to Payment
+                    </button>
+                  </motion.div>
+                )}
+
+                {checkoutStep === 2 && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                    <div>
+                      <h4 className="font-serif text-lg mb-4">Payment Method (Mock)</h4>
+                      <p className="text-xs opacity-60 mb-6">This is a simulated checkout. No real card is needed.</p>
+                      <div className="p-6 border border-brand-bg bg-brand-muted/20 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                          <ShieldCheck size={48} />
+                        </div>
+                        <input type="text" placeholder="Card Number (e.g. 4242 4242 4242 4242)" className="w-full bg-transparent border-b border-black/20 focus:border-brand-bg pb-2 mb-6 text-sm outline-none" defaultValue="4242 4242 4242 4242" />
+                        <div className="grid grid-cols-2 gap-6">
+                          <input type="text" placeholder="MM/YY" className="bg-transparent border-b border-black/20 focus:border-brand-bg pb-2 text-sm outline-none" defaultValue="12/26" />
+                          <input type="text" placeholder="CVC" className="bg-transparent border-b border-black/20 focus:border-brand-bg pb-2 text-sm outline-none" defaultValue="123" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t border-black/10 pt-6">
+                      <div className="flex justify-between items-center text-xl font-serif">
+                        <span>Total to Pay</span>
+                        <strong>${finalTotal.toFixed(2)}</strong>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <button onClick={() => setCheckoutStep(1)} className="w-1/3 bg-transparent border border-black/20 text-brand-bg py-4 uppercase tracking-[0.2em] text-xs font-bold hover:bg-black/5 transition-colors">
+                        Back
+                      </button>
+                      <button onClick={processOrder} className="w-2/3 bg-brand-bg text-white py-4 uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-bg/90 transition-colors">
+                        Complete Order
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {checkoutStep === 3 && (
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="py-12 flex flex-col items-center text-center">
+                    <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-8">
+                      <CheckCircle2 size={40} />
+                    </div>
+                    <h3 className="text-3xl font-serif mb-4">Thank You</h3>
+                    <p className="text-brand-bg/60 max-w-sm mb-8">Your order has been placed successfully. You will receive an email confirmation shortly.</p>
+                    <div className="bg-brand-muted p-6 w-full max-w-sm mb-12">
+                      <div className="text-[10px] uppercase tracking-widest font-bold opacity-40 mb-2">Order Reference</div>
+                      <div className="text-xl font-mono">#VV-{Math.floor(Math.random() * 900000) + 100000}</div>
+                    </div>
+                    <div className="flex flex-col w-full max-w-sm gap-4">
+                      <button onClick={() => window.print()} className="w-full bg-brand-bg text-white py-4 flex items-center justify-center gap-2 uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-bg/90 transition-colors">
+                        Download Invoice
+                      </button>
+                      <button onClick={() => { setIsCheckoutOpen(false); setCheckoutStep(1); }} className="w-full bg-white border border-brand-bg text-brand-bg py-4 uppercase tracking-[0.2em] text-xs font-bold hover:bg-brand-bg/5 transition-colors">
+                        Continue Shopping
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
             </motion.div>
           </>
         )}

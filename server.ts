@@ -6,6 +6,11 @@ import multer from 'multer';
 import * as fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import cors from 'cors';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import { z } from 'zod';
 import {
   uploadImageToComfyUI,
   submitComfyUIWorkflow,
@@ -36,7 +41,57 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Security and Utility Middleware
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })); // Secure HTTP headers (CSP disabled for Vite HMR compatibility)
+  app.use(cors()); // Enable CORS for all origins (adjust in prod if needed)
+  app.use(morgan('dev')); // Structured request logging
   app.use(express.json());
+
+  // Rate Limiting (apply to all /api routes)
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+    message: { success: false, error: 'Too many requests from this IP, please try again after 15 minutes' },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  });
+  app.use('/api/', apiLimiter);
+
+  // --- ZOD SCHEMAS FOR VALIDATION ---
+  const CategorySchema = z.object({
+    id: z.string().optional(),
+    name: z.string().min(1, 'Name is required'),
+    slug: z.string().min(1, 'Slug is required'),
+    description: z.string().optional().nullable(),
+    parentId: z.string().optional().nullable(),
+    image: z.string().url('Must be a valid URL').optional().nullable(),
+  });
+
+  const ProductSchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    price: z.number().positive('Price must be positive'),
+    category: z.string().min(1, 'Category is required'),
+    image: z.string().url('Must be a valid URL'),
+    image2: z.string().url().optional().nullable(),
+    image3: z.string().url().optional().nullable(),
+    image4: z.string().url().optional().nullable(),
+    image5: z.string().url().optional().nullable(),
+    video: z.string().url().optional().nullable(),
+    video2: z.string().url().optional().nullable(),
+    description: z.string().optional().nullable(),
+    is_available: z.boolean().default(true),
+    sizeChart: z.record(z.string(), z.any()).optional().nullable(),
+  });
+
+  const OrderSchema = z.object({
+    email: z.string().email('Valid email is required'),
+    total: z.number().nonnegative('Total must be zero or positive'),
+    items: z.array(z.any()).min(1, 'At least one item is required in the order'),
+  });
+  // ----------------------------------
 
   // Virtual Try-On API Route
   const workflowPath = path.join(process.cwd(), 'deploy1.json');
@@ -123,7 +178,7 @@ async function startServer() {
   });
 
   // API Routes
-  app.get("/api/products", async (req: any, res: any) => {
+  app.get("/api/products", async (req: any, res: any, next: any) => {
     try {
       const { data: products, error } = await supabase.from('products').select('*');
       if (error) throw error;
@@ -135,57 +190,60 @@ async function startServer() {
       }));
       res.json(formattedProducts);
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      next(err);
     }
   });
 
-  app.get("/api/categories", async (req: any, res: any) => {
+  app.get("/api/categories", async (req: any, res: any, next: any) => {
     try {
       const { data: categories, error } = await supabase.from('categories').select('*');
       if (error) throw error;
       res.json(categories || []);
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      next(err);
     }
   });
 
-  app.post("/api/categories", async (req: any, res: any) => {
+  app.post("/api/categories", async (req: any, res: any, next: any) => {
     try {
-      const { id, name, slug, description, parentId, image } = req.body;
+      const validatedData = CategorySchema.parse(req.body);
+      const { id, name, slug, description, parentId, image } = validatedData;
       const { error } = await supabase.from('categories').insert([{ id, name, slug, description, parentid: parentId, image }]);
       if (error) throw error;
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      next(err);
     }
   });
 
-  app.put("/api/categories/:id", async (req: any, res: any) => {
+  app.put("/api/categories/:id", async (req: any, res: any, next: any) => {
     try {
       const { id } = req.params;
-      const { name, slug, description, parentId, image } = req.body;
+      const validatedData = CategorySchema.parse(req.body);
+      const { name, slug, description, parentId, image } = validatedData;
       const { error } = await supabase.from('categories').update({ name, slug, description, parentid: parentId, image }).eq('id', id);
       if (error) throw error;
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      next(err);
     }
   });
 
-  app.delete("/api/categories/:id", async (req: any, res: any) => {
+  app.delete("/api/categories/:id", async (req: any, res: any, next: any) => {
     try {
       const { id } = req.params;
       const { error } = await supabase.from('categories').delete().eq('id', id);
       if (error) throw error;
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      next(err);
     }
   });
 
-  app.post("/api/products", async (req: any, res: any) => {
+  app.post("/api/products", async (req: any, res: any, next: any) => {
     try {
-      const { name, price, category, image, image2, image3, image4, image5, video, video2, description, is_available, sizeChart } = req.body;
+      const validatedData = ProductSchema.parse(req.body);
+      const { name, price, category, image, image2, image3, image4, image5, video, video2, description, is_available, sizeChart } = validatedData;
       const { data, error } = await supabase.from('products').insert([{
         name, price, category, image, image2: image2 || null, image3: image3 || null,
         image4: image4 || null, image5: image5 || null, video: video || null, video2: video2 || null,
@@ -195,14 +253,15 @@ async function startServer() {
       if (error) throw error;
       res.json({ success: true, id: data?.id });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      next(err);
     }
   });
 
-  app.put("/api/products/:id", async (req: any, res: any) => {
+  app.put("/api/products/:id", async (req: any, res: any, next: any) => {
     try {
       const { id } = req.params;
-      const { name, price, category, image, image2, image3, image4, image5, video, video2, description, is_available, sizeChart } = req.body;
+      const validatedData = ProductSchema.parse(req.body);
+      const { name, price, category, image, image2, image3, image4, image5, video, video2, description, is_available, sizeChart } = validatedData;
       const { error } = await supabase.from('products').update({
         name, price, category, image, image2: image2 || null, image3: image3 || null,
         image4: image4 || null, image5: image5 || null, video: video || null, video2: video2 || null,
@@ -212,33 +271,54 @@ async function startServer() {
       if (error) throw error;
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      next(err);
     }
   });
 
-  app.delete("/api/products/:id", async (req: any, res: any) => {
+  app.delete("/api/products/:id", async (req: any, res: any, next: any) => {
     try {
       const { id } = req.params;
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) throw error;
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      next(err);
     }
   });
 
-  app.post("/api/orders", async (req: any, res: any) => {
+  app.post("/api/orders", async (req: any, res: any, next: any) => {
     try {
-      const { email, total, items } = req.body;
+      const validatedData = OrderSchema.parse(req.body);
+      const { email, total, items } = validatedData;
+
+      // Mocking Secure Payment Processing on Backend
+      console.log(`[PAYMENT] Processing mock payment for ${email} of amount $${total}`);
+      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
+      
+      const paymentSuccess = true;
+      if (!paymentSuccess) {
+         throw new Error("Payment declined by Mock Gateway.");
+      }
+
       const { data, error } = await supabase.from('orders').insert([{
         customer_email: email, total, items: JSON.stringify(items)
       }]).select('id').single();
 
       if (error) throw error;
-      res.json({ success: true, orderId: data?.id });
+      res.json({ success: true, orderId: data?.id, paymentStatus: 'Success' });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      next(err);
     }
+  });
+
+  // Global Error Handler Middleware
+  app.use((err: any, req: any, res: any, next: any) => {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ success: false, error: 'Validation failed', details: err.issues });
+    }
+    
+    console.error('[SERVER ERROR]', err);
+    res.status(500).json({ success: false, error: err.message || 'Internal Server Error' });
   });
 
   // Vite middleware for development
