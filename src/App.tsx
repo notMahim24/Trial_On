@@ -569,20 +569,55 @@ function MainApp() {
       )}>
         <div className="max-w-[1800px] w-full mx-auto px-4 md:px-8 flex items-center justify-between">
           <div className="flex items-center gap-12">
-            <button onClick={() => setIsMobileMenuOpen(true)} className={cn("md:hidden p-2", !isScrolled && !selectedProduct ? "text-white" : "text-black")}>
-              <Menu size={24} />
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)} 
+              className={cn(
+                "md:hidden relative w-10 h-10 flex flex-col justify-center items-center gap-1.5 transition-all duration-300", 
+                !isScrolled && !selectedProduct ? "text-white" : "text-black"
+              )}
+            >
+              <span className={cn("w-6 h-[1.5px] bg-current transition-all", isMobileMenuOpen && "rotate-45 translate-y-2")} />
+              <span className={cn("w-6 h-[1.5px] bg-current transition-all", isMobileMenuOpen && "opacity-0")} />
+              <span className={cn("w-6 h-[1.5px] bg-current transition-all", isMobileMenuOpen && "-rotate-45 -translate-y-2")} />
             </button>
             <div className="hidden md:block relative">
               <button
                 onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
                 className={cn(
-                  "flex items-center gap-2 px-6 py-2 border rounded-full text-[10px] uppercase tracking-[0.3em] font-bold transition-all",
+                  "group relative flex items-center gap-3 px-8 py-3 transition-all duration-500 overflow-hidden",
                   !isScrolled && !selectedProduct
-                    ? "text-white border-white/20 hover:bg-white/10"
-                    : "text-black border-black/10 hover:bg-black/5"
+                    ? "text-white"
+                    : "text-black"
                 )}
               >
-                Menu <ChevronDown size={14} className={cn("transition-transform", isNavMenuOpen && "rotate-180")} />
+                {/* Modern Menu Icon with Animation */}
+                <div className="relative w-5 h-4 flex flex-col justify-between items-center overflow-hidden">
+                  <span className={cn(
+                    "w-full h-[1.5px] transition-all duration-300 origin-left",
+                    !isScrolled && !selectedProduct ? "bg-white" : "bg-black",
+                    isNavMenuOpen && "rotate-45 translate-x-1"
+                  )} />
+                  <span className={cn(
+                    "w-full h-[1.5px] transition-all duration-300",
+                    !isScrolled && !selectedProduct ? "bg-white" : "bg-black",
+                    isNavMenuOpen && "opacity-0 -translate-x-full"
+                  )} />
+                  <span className={cn(
+                    "w-full h-[1.5px] transition-all duration-300 origin-left",
+                    !isScrolled && !selectedProduct ? "bg-white" : "bg-black",
+                    isNavMenuOpen && "-rotate-45 translate-x-1"
+                  )} />
+                </div>
+                
+                <span className="text-[11px] uppercase tracking-[0.4em] font-medium">
+                  {isNavMenuOpen ? 'Close' : 'Explore'}
+                </span>
+
+                {/* Animated underline */}
+                <span className={cn(
+                  "absolute bottom-2 left-8 right-8 h-[1px] transition-transform duration-500 scale-x-0 group-hover:scale-x-100",
+                  !isScrolled && !selectedProduct ? "bg-white/40" : "bg-black/20"
+                )} />
               </button>
 
               <AnimatePresence>
@@ -1799,88 +1834,97 @@ function MainApp() {
       />
 
       {/* Footer */}
-      <footer ref={footerRef} className="bg-white border-t border-black/5 pt-32 pb-0">
-        <div className="max-w-[1800px] mx-auto px-8 grid grid-cols-1 md:grid-cols-5 gap-16 pb-24">
-          <div className="col-span-2">
-            <h1 className="text-3xl font-serif font-bold tracking-[0.35em] mb-8">VESTON</h1>
-            <p className="text-xs uppercase tracking-widest text-brand-bg/40 leading-loose mb-10">
-              The pinnacle of AI-powered luxury fashion. <br />A NEXARA Technology Group Company.
+      {/* Footer */}
+      <footer ref={footerRef} className="bg-[#0a0a0a] text-white pt-32 pb-0 relative overflow-hidden">
+        {/* Subtle Decorative Elements */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-accent/5 rounded-full blur-[120px] -mr-64 -mt-64" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-white/5 rounded-full blur-[80px] -ml-32 -mb-32" />
+
+        <div className="max-w-[1800px] mx-auto px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-20 pb-24 relative z-10">
+          <div className="lg:col-span-2">
+            <h1 className="text-4xl font-serif font-bold tracking-[0.4em] mb-10">VESTON</h1>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-white/40 leading-loose mb-12 max-w-sm">
+              Defining the future of high-fashion through artificial intelligence and artisan craftsmanship. Part of the NEXARA Group.
             </p>
-            {/* Social Media Links */}
-            <div className="flex gap-6">
+            
+            <div className="flex gap-4">
               {[
-                { label: 'IG', url: 'https://instagram.com' },
-                { label: 'TT', url: 'https://tiktok.com' },
-                { label: 'PI', url: 'https://pinterest.com' },
-                { label: 'YT', url: 'https://youtube.com' },
+                { label: 'Instagram', icon: 'IG', url: 'https://instagram.com' },
+                { label: 'TikTok', icon: 'TT', url: 'https://tiktok.com' },
+                { label: 'Pinterest', icon: 'PI', url: 'https://pinterest.com' },
+                { label: 'YouTube', icon: 'YT', url: 'https://youtube.com' },
               ].map(s => (
                 <a
                   key={s.label}
                   href={s.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 border border-black/10 flex items-center justify-center text-[8px] font-bold hover:bg-brand-bg hover:text-white hover:border-brand-bg transition-all duration-300"
+                  className="w-12 h-12 border border-white/10 flex items-center justify-center rounded-full hover:bg-white hover:text-black hover:border-white transition-all duration-500 group"
+                  title={s.label}
                 >
-                  {s.label}
+                  <span className="text-[10px] font-bold group-hover:scale-110 transition-transform">{s.icon}</span>
                 </a>
               ))}
             </div>
           </div>
+
           <div>
-            <h5 className="text-[10px] uppercase tracking-[0.4em] font-bold mb-10">Universe</h5>
-            <ul className="space-y-6 text-xs uppercase tracking-widest text-brand-bg/60">
-              <li><button onClick={() => { setActiveCategory('All'); scrollToProducts(); }} className="hover:text-brand-bg transition-colors">Women</button></li>
-              <li><button onClick={() => { setActiveCategory('Outerwear'); scrollToProducts(); }} className="hover:text-brand-bg transition-colors">Men</button></li>
-              <li><button onClick={() => { setActiveCategory('Dresses'); scrollToProducts(); }} className="hover:text-brand-bg transition-colors">Accessories</button></li>
-              <li><button onClick={() => { setActiveCategory('All'); scrollToProducts(); }} className="hover:text-brand-bg transition-colors">New Arrivals</button></li>
-              <li><button onClick={() => showNotification('Art of Living collection arriving soon', 'info')} className="hover:text-brand-bg transition-colors">Art of Living</button></li>
+            <h5 className="text-[10px] uppercase tracking-[0.5em] font-bold text-brand-accent mb-12">Collection</h5>
+            <ul className="space-y-6 text-[10px] uppercase tracking-[0.2em] text-white/50">
+              <li><button onClick={() => { setActiveCategory('All'); scrollToProducts(); }} className="hover:text-white transition-colors duration-300">Haute Couture</button></li>
+              <li><button onClick={() => { setActiveCategory('Outerwear'); scrollToProducts(); }} className="hover:text-white transition-colors duration-300">Ready-To-Wear</button></li>
+              <li><button onClick={() => { setActiveCategory('Dresses'); scrollToProducts(); }} className="hover:text-white transition-colors duration-300">Maison Accessories</button></li>
+              <li><button onClick={() => { setActiveCategory('All'); scrollToProducts(); }} className="hover:text-white transition-colors duration-300">Seasonal Drop</button></li>
             </ul>
           </div>
+
           <div>
-            <h5 className="text-[10px] uppercase tracking-[0.4em] font-bold mb-10">Services</h5>
-            <ul className="space-y-6 text-xs uppercase tracking-widest text-brand-bg/60">
-              <li><Link to="/services" className="hover:text-brand-bg transition-colors">Our Services</Link></li>
-              <li><button onClick={() => showNotification('Complimentary express shipping on orders over $200', 'info')} className="hover:text-brand-bg transition-colors">Shipping</button></li>
-              <li><button onClick={() => showNotification('30-day hassle-free returns policy', 'info')} className="hover:text-brand-bg transition-colors">Returns</button></li>
-              <li><Link to="/contact" className="hover:text-brand-bg transition-colors">Contact Us</Link></li>
+            <h5 className="text-[10px] uppercase tracking-[0.5em] font-bold text-brand-accent mb-12">Maison</h5>
+            <ul className="space-y-6 text-[10px] uppercase tracking-[0.2em] text-white/50">
+              <li><Link to="/services" className="hover:text-white transition-colors duration-300">Our Heritage</Link></li>
+              <li><button onClick={() => showNotification('Global White-Glove Shipping', 'info')} className="hover:text-white transition-colors duration-300">Shipping & Delivery</button></li>
+              <li><button onClick={() => showNotification('Bespoke Return Service', 'info')} className="hover:text-white transition-colors duration-300">Returns & Exchanges</button></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors duration-300">Private Concierge</Link></li>
             </ul>
           </div>
+
           <div>
-            <h5 className="text-[10px] uppercase tracking-[0.4em] font-bold mb-10">Newsletter</h5>
-            <p className="text-xs uppercase tracking-widest text-brand-bg/40 mb-8 leading-loose">Subscribe to receive the latest from the Maison.</p>
-            <form onSubmit={handleNewsletter} className="flex border-b border-black/20 pb-2 mb-8">
+            <h5 className="text-[10px] uppercase tracking-[0.5em] font-bold text-brand-accent mb-12">The Atelier</h5>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-8 leading-loose">Enter your email to receive private collection access.</p>
+            <form onSubmit={handleNewsletter} className="group flex border-b border-white/20 pb-4 mb-8 focus-within:border-white transition-colors">
               <input
                 type="email"
                 required
-                placeholder="Email address"
-                className="bg-transparent text-xs uppercase tracking-widest flex-grow focus:outline-none"
+                placeholder="EMAIL ADDRESS"
+                className="bg-transparent text-[10px] uppercase tracking-[0.3em] flex-grow focus:outline-none placeholder:text-white/20"
               />
-              <button type="submit" className="hover:opacity-50 transition-opacity">
-                <ArrowRight size={16} />
+              <button type="submit" className="hover:translate-x-2 transition-transform duration-300">
+                <ArrowRight size={18} className="text-brand-accent" />
               </button>
             </form>
-            <div className="space-y-3 text-[9px] uppercase tracking-widest text-brand-bg/30">
-              <div className="flex items-center gap-2"><span>🔒</span><span>Secure checkout — SSL encrypted</span></div>
-              <div className="flex items-center gap-2"><span>↩</span><span>30-day free returns</span></div>
-              <div className="flex items-center gap-2"><span>✦</span><span>Authenticity guaranteed</span></div>
+            <div className="flex flex-col gap-4 text-[8px] uppercase tracking-[0.2em] text-white/20">
+              <div className="flex items-center gap-3"><ShieldCheck size={14} className="opacity-50" /> <span>End-to-End Encryption</span></div>
+              <div className="flex items-center gap-3"><Sparkles size={14} className="opacity-50" /> <span>Exclusive Member Privileges</span></div>
             </div>
           </div>
         </div>
 
         {/* Footer Bottom Bar */}
-        <div className="border-t border-black/5 bg-brand-muted/30">
-          <div className="max-w-[1800px] mx-auto px-8 py-8 flex flex-col md:flex-row justify-between items-center gap-6 text-[9px] uppercase tracking-[0.3em] opacity-60 font-bold">
-            <p>© 2026 VESTON · NEXARA Group. All Rights Reserved.</p>
-            <div className="flex items-center gap-3 flex-wrap justify-center">
-              {['Visa', 'MC', 'Amex', 'Apple Pay', 'PayPal'].map(p => (
-                <span key={p} className="px-3 py-1 border border-black/10 text-[8px] font-bold rounded">{p}</span>
+        <div className="border-t border-white/5 bg-black/50 backdrop-blur-md">
+          <div className="max-w-[1800px] mx-auto px-8 py-10 flex flex-col lg:row justify-between lg:flex-row items-center gap-8 text-[9px] uppercase tracking-[0.4em] text-white/30 font-medium">
+            <p>© 2026 VESTON ATELIER · NEXARA GROUP HOLDINGS</p>
+            
+            <div className="flex items-center gap-3">
+              {['Visa Platinum', 'World Elite MC', 'Amex Black', 'Apple Pay'].map(p => (
+                <span key={p} className="px-4 py-1.5 border border-white/5 text-[7px] font-bold rounded-sm bg-white/5 uppercase">{p}</span>
               ))}
             </div>
-            <div className="flex gap-8">
-              <button onClick={() => showNotification('Privacy Policy updated Feb 2026', 'info')}>Privacy Policy</button>
-              <button onClick={() => showNotification('Terms of Service updated Feb 2026', 'info')}>Terms</button>
-              <button onClick={() => showNotification('Accessibility Statement', 'info')}>Accessibility</button>
-              <button onClick={() => showNotification('Cookie Notice', 'info')}>Cookies</button>
+
+            <div className="flex gap-10">
+              <button className="hover:text-white transition-colors">Legal</button>
+              <button className="hover:text-white transition-colors">Privacy</button>
+              <button className="hover:text-white transition-colors">Cookies</button>
+              <button className="hover:text-white transition-colors">Sitemap</button>
             </div>
           </div>
         </div>
