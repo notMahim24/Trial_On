@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
@@ -50,9 +50,42 @@ const mockOrders: Order[] = [
 ];
 
 const AdminOrders: React.FC = () => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      const data = await response.json();
+      
+      // Transform DB data to matching interface if needed
+      const formatted = data.map((ord: any) => ({
+        id: ord.id.substring(0, 8).toUpperCase(),
+        date: new Date(ord.created_at).toLocaleString(),
+        customer: {
+          name: ord.customer_email.split('@')[0], // Simplified
+          email: ord.customer_email
+        },
+        items: JSON.parse(ord.items).length,
+        total: parseFloat(ord.total),
+        paymentStatus: ord.payment_status,
+        fulfillmentStatus: ord.fulfillment_status
+      }));
+      
+      setOrders(formatted);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openOrderDetail = (order: Order) => {
     setSelectedOrder(order);
@@ -129,7 +162,15 @@ const AdminOrders: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockOrders.map((order, idx) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading orders...</td>
+                </tr>
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No orders found</td>
+                </tr>
+              ) : orders.map((order, idx) => (
                 <motion.tr 
                   key={order.id}
                   initial={{ opacity: 0, y: 10 }}

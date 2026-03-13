@@ -84,7 +84,7 @@ const AdminSidebar: React.FC = () => {
   const { user, logout } = useAuth();
 
   return (
-    <aside className="w-[260px] h-screen bg-admin-sidebar border-r border-admin-gold/15 flex flex-col sticky top-0 shrink-0 z-50">
+    <aside className="w-[260px] h-full bg-admin-sidebar border-r border-admin-gold/15 flex flex-col shrink-0 z-50 relative">
       {/* Logo Section */}
       <div className="p-8 border-b border-admin-gold/10">
         <motion.div 

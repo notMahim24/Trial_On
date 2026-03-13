@@ -390,6 +390,16 @@ async function startServer() {
     }
   });
 
+  app.get("/api/orders", async (req: any, res: any, next: any) => {
+    try {
+      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
   app.post("/api/orders", async (req: any, res: any, next: any) => {
     try {
       const validatedData = OrderSchema.parse(req.body);
@@ -410,6 +420,39 @@ async function startServer() {
 
       if (error) throw error;
       res.json({ success: true, orderId: data?.id, paymentStatus: 'Success' });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  // Newsletter Endpoints
+  app.get("/api/newsletters", async (req: any, res: any, next: any) => {
+    try {
+      const { data, error } = await supabase.from('newsletters').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.post("/api/newsletters", async (req: any, res: any, next: any) => {
+    try {
+      const { email } = req.body;
+      const { error } = await supabase.from('newsletters').insert([{ email, status: 'Active' }]);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  // Banners Endpoints
+  app.get("/api/banners", async (req: any, res: any, next: any) => {
+    try {
+      const { data, error } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      res.json(data || []);
     } catch (err: any) {
       next(err);
     }

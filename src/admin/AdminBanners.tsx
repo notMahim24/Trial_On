@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
@@ -44,8 +44,38 @@ const mockBanners: Banner[] = [
 ];
 
 const AdminBanners: React.FC = () => {
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchBanners();
+  }, []);
+
+  const fetchBanners = async () => {
+    try {
+      const res = await fetch('/api/banners');
+      const data = await res.json();
+      
+      const formatted = data.map((b: any) => ({
+        id: b.id,
+        title: b.title,
+        placement: b.placement || 'Hero',
+        status: b.is_active ? 'Active' : 'Draft',
+        clicks: b.clicks || 0,
+        ctr: b.ctr || '0%',
+        startDate: new Date(b.created_at).toLocaleDateString(),
+        endDate: 'Ongoing',
+        image: b.image_url
+      }));
+      setBanners(formatted);
+    } catch (err) {
+      console.error('Error fetching banners:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
@@ -119,7 +149,15 @@ const AdminBanners: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockBanners.map((banner, idx) => (
+              {loading ? (
+                <tr>
+                   <td colSpan={8} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading banners...</td>
+                </tr>
+              ) : banners.length === 0 ? (
+                <tr>
+                   <td colSpan={8} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No banners found</td>
+                </tr>
+              ) : banners.map((banner, idx) => (
                 <motion.tr 
                   key={banner.id}
                   initial={{ opacity: 0, y: 10 }}

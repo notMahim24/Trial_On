@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   DollarSign, 
@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   Clock,
   Truck,
-  XCircle
+  XCircle,
+  ShoppingBag,
+  Activity
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -73,14 +75,55 @@ const activityLog = [
 ];
 
 const AdminDashboard: React.FC = () => {
+  const [stats, setStats] = useState({
+    products: 0,
+    categories: 0,
+    orders: 0,
+    contacts: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const [resP, resC, resO, resM] = await Promise.all([
+        fetch('/api/products'),
+        fetch('/api/categories'),
+        fetch('/api/orders'),
+        fetch('/api/contact')
+      ]);
+      
+      const [dataP, dataC, dataO, dataM] = await Promise.all([
+        resP.json(),
+        resC.json(),
+        resO.json(),
+        resM.json()
+      ]);
+
+      setStats({
+        products: dataP.length,
+        categories: dataC.length,
+        orders: dataO.length,
+        contacts: dataM.length
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-12">
       {/* SECTION A — KPI CARDS ROW */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <StatCard label="Revenue" value="$128,430" trend={12.4} icon={DollarSign} delay={0.1} floatDuration={4.2} />
-        <StatCard label="Orders" value="1,204 total" trend={5.2} icon={Package} delay={0.2} floatDuration={5.1} />
-        <StatCard label="New Users" value="+84 this week" trend={8.1} icon={Users} delay={0.3} floatDuration={4.7} />
-        <StatCard label="Low Stock" value="12 products" trend={-2.4} icon={AlertCircle} delay={0.4} floatDuration={5.8} />
+        <StatCard label="Revenue" value="$42,500" trend={12.4} icon={DollarSign} delay={0.1} floatDuration={4.2} />
+        <StatCard label="Orders" value={`${stats.orders} total`} trend={8.2} icon={Package} delay={0.2} floatDuration={5.1} />
+        <StatCard label="Products" value={`${stats.products} active`} trend={4.1} icon={ShoppingBag} delay={0.3} floatDuration={4.7} />
+        <StatCard label="Inquiries" value={`${stats.contacts} notifications`} trend={-2.4} icon={AlertCircle} delay={0.4} floatDuration={5.8} />
       </div>
 
       {/* SECTION B — CHARTS ROW */}

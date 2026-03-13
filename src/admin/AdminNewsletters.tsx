@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
@@ -41,8 +41,26 @@ const mockCampaigns: Campaign[] = [
 ];
 
 const AdminNewsletters: React.FC = () => {
+  const [subscribers, setSubscribers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchSubscribers();
+  }, []);
+
+  const fetchSubscribers = async () => {
+    try {
+      const res = await fetch('/api/newsletters');
+      const data = await res.json();
+      setSubscribers(data);
+    } catch (err) {
+      console.error('Error fetching subscribers:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
@@ -106,9 +124,17 @@ const AdminNewsletters: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockCampaigns.map((campaign, idx) => (
+              {loading ? (
+                <tr>
+                   <td colSpan={7} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading subscribers...</td>
+                </tr>
+              ) : subscribers.length === 0 ? (
+                <tr>
+                   <td colSpan={7} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No subscribers found</td>
+                </tr>
+              ) : subscribers.map((sub, idx) => (
                 <motion.tr 
-                  key={campaign.id}
+                  key={sub.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
@@ -119,35 +145,34 @@ const AdminNewsletters: React.FC = () => {
                       <div className="p-2 bg-admin-gold/5 border border-admin-gold/10 text-admin-gold">
                         <Mail size={14} />
                       </div>
-                      <span className="text-sm font-bold tracking-wide group-hover:text-admin-gold transition-colors">{campaign.subject}</span>
+                      <span className="text-sm font-bold tracking-wide group-hover:text-admin-gold transition-colors">{sub.email}</span>
                     </div>
                   </td>
                   <td className="p-6">
-                    <span className="text-xs opacity-60">{campaign.recipients.toLocaleString()}</span>
+                    <span className="text-xs opacity-60">1</span>
                   </td>
                   <td className="p-6">
-                    <span className="text-[10px] uppercase tracking-widest opacity-40">{campaign.sentDate}</span>
+                    <span className="text-[10px] uppercase tracking-widest opacity-40">{new Date(sub.created_at).toLocaleDateString()}</span>
                   </td>
                   <td className="p-6">
                     <div className="flex items-center gap-2">
                       <Eye size={12} className="text-admin-gold/40" />
-                      <span className="text-xs font-bold">{campaign.openRate}</span>
+                      <span className="text-xs font-bold">100%</span>
                     </div>
                   </td>
                   <td className="p-6">
                     <div className="flex items-center gap-2">
                       <MousePointer2 size={12} className="text-admin-gold/40" />
-                      <span className="text-xs font-bold">{campaign.clickRate}</span>
+                      <span className="text-xs font-bold">0%</span>
                     </div>
                   </td>
                   <td className="p-6">
                     <span className={cn(
                       "text-[9px] uppercase tracking-widest font-bold px-3 py-1 border",
-                      campaign.status === 'Sent' ? "bg-admin-success/5 border-admin-success/20 text-admin-success" :
-                      campaign.status === 'Scheduled' ? "bg-admin-warning/5 border-admin-warning/20 text-admin-warning" :
+                      sub.status === 'Active' ? "bg-admin-success/5 border-admin-success/20 text-admin-success" :
                       "bg-white/5 border-white/10 text-admin-ivory/40"
                     )}>
-                      {campaign.status}
+                      {sub.status}
                     </span>
                   </td>
                   <td className="p-6 text-right">
