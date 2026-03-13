@@ -82,11 +82,11 @@ const AdminSettings: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Store Name</label>
-                    <input type="text" defaultValue="ZELORI LUXURY" className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" />
+                    <input type="text" defaultValue="VESTON LUXURY" className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Support Email</label>
-                    <input type="email" defaultValue="concierge@zelori.com" className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" />
+                    <input type="email" defaultValue="concierge@veston.com" className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Store Currency</label>

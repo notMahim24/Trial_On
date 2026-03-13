@@ -97,7 +97,7 @@ const AdminProfile: React.FC = () => {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Email Address</label>
-                    <input type="email" defaultValue={user?.email || 'admin@zelori.com'} className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" />
+                    <input type="email" defaultValue={user?.email || 'admin@veston.com'} className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Phone Number</label>

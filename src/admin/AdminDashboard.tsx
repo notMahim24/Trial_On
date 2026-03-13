@@ -66,7 +66,7 @@ const topProducts = [
 ];
 
 const activityLog = [
-  { action: 'Admin updated product', target: 'Zelori Silk Coat', actor: 'M. Mamun', time: '2 mins ago' },
+  { action: 'Admin updated product', target: 'VESTON Silk Coat', actor: 'M. Mamun', time: '2 mins ago' },
   { action: 'New order placed', target: '#ZEL-00421', actor: 'System', time: '5 mins ago' },
   { action: 'Admin changed status', target: '#ZEL-00419', actor: 'S. Loren', time: '12 mins ago' },
   { action: 'New user registered', target: 'Gianni V.', actor: 'System', time: '25 mins ago' },

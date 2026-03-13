@@ -33,7 +33,7 @@ const AdminTopbar: React.FC = () => {
       <div className="flex items-center gap-6">
         <h2 className="text-xl font-admin-display font-bold tracking-[0.1em] text-admin-gold">{getPageTitle()}</h2>
         <div className="h-4 w-px bg-admin-gold/20" />
-        <span className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">ZELORI PORTAL</span>
+        <span className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">VESTON PORTAL</span>
       </div>
 
       {/* Center: Global Search */}

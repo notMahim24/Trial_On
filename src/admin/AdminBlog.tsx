@@ -253,7 +253,7 @@ const AdminBlog: React.FC = () => {
                     <div className="space-y-2">
                       <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Slug</label>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] opacity-30">zelori.com/blog/</span>
+                        <span className="text-[10px] opacity-30">veston.com/blog/</span>
                         <input type="text" className="flex-grow bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" placeholder="the-art-of-italian-silk" />
                       </div>
                     </div>
