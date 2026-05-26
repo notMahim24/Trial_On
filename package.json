@@ -1,0 +1,13 @@
+{
+  "name": "virton-monorepo",
+  "version": "1.0.0",
+  "scripts": {
+    "install:all": "npm install --prefix Trial_On --legacy-peer-deps",
+    "start:web": "npm run dev --prefix Trial_On",
+    "start:ai": "python start_ai.py",
+    "start": "concurrently --names \"WEB,AI\" --prefix-colors \"blue,magenta\" \"npm run start:web\" \"npm run start:ai\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
