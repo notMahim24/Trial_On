@@ -1,0 +1,18 @@
+# ==============================
+# CORE DEPENDENCIES
+# ==============================
+fastapi
+uvicorn[standard]
+pydantic
+
+# ==============================
+# ENV + CONFIG
+# ==============================
+python-dotenv
+python-multipart
+
+# ==============================
+# RAG / LLM PLACEHOLDERS
+# ==============================
+# Add your specific LLM/RAG libraries here as you build them out.
+# e.g., langchain, openai, chromadb, etc.
