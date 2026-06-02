@@ -12,7 +12,11 @@ python-dotenv
 python-multipart
 
 # ==============================
-# RAG / LLM PLACEHOLDERS
+# AI / ML / LLM DEPENDENCIES
 # ==============================
-# Add your specific LLM/RAG libraries here as you build them out.
-# e.g., langchain, openai, chromadb, etc.
+langchain-mistralai
+torch
+torchvision
+pillow
+git+https://github.com/openai/CLIP.git
+streamlit

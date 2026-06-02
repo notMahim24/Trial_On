@@ -12,9 +12,9 @@ def run_pipeline(user_input: str, chat_history=None):
     """
     # 1. ANALYZE CURRENT MESSAGE
     # We extract intent (color, category, etc.) from the latest input
-    processed = process_input(user_input)
-    current_intent = processed.get("context", {})
-    user_info = processed.get("user_info", {})
+    processed = process_input(user_input, chat_history)
+    current_intent = processed.get("context", {}) or {}
+    user_info = processed.get("user_info", {}) or {}
     
     # 2. UPDATE PERSONAL MEMORY
     # We save newly discovered info into the session-based memory
@@ -29,7 +29,10 @@ def run_pipeline(user_input: str, chat_history=None):
     # Does the user want a recommendation, general advice, or are they refining a previous pick?
     action = route_decision(user_input)
     if action == "unknown":
-        action = current_intent.get("action", "advice")
+        action = current_intent.get("action") or "advice"
+    
+    if action not in ("recommend", "advice"):
+        action = "advice"
 
     # ------------------------------
     # 5. SMART CLARIFICATION LOOP
