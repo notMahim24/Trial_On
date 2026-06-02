@@ -1,0 +1,7 @@
+[submodule "Trial_On"]
+	path = Trial_On
+	url = https://github.com/notMahim24/Trial_On.git
+
+[submodule "AI_FASHION_ASSISSTANT-NEW"]
+	path = AI_FASHION_ASSISSTANT-NEW
+	url = https://github.com/notMahim24/AI_FASHION_ASSISSTANT-NEW.git
