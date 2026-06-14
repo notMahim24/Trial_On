@@ -65,9 +65,13 @@ const AdminProducts: React.FC = () => {
         fetchProducts();
         setIsAddPanelOpen(false);
         setEditingProduct(null);
+      } else {
+        const errData = await res.json().catch(() => null);
+        alert(`Failed to save product: ${errData?.error || res.statusText}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error);
+      alert('Network error while saving product. Check console.');
     }
   };
 
@@ -154,7 +158,7 @@ const AdminProducts: React.FC = () => {
           </button>
           <button 
             onClick={() => {
-              setEditingProduct({ name: '', price: 0, category: 'Dresses', image: '', video: '', description: '' });
+              setEditingProduct({ name: '', price: 0, category: 'Dresses', image: '', video: '', description: '', is_available: true });
               setIsAddPanelOpen(true);
             }}
             className="flex items-center gap-2 px-8 py-4 bg-admin-gold text-admin-bg text-[10px] uppercase tracking-[0.3em] font-bold hover:bg-admin-gold/90 transition-all shadow-[0_0_20px_rgba(201,168,76,0.2)]"

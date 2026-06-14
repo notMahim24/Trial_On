@@ -5,18 +5,22 @@ import os
 import torch
 import clip
 from functools import lru_cache
+from io import BytesIO
+import base64
+from PIL import Image
+import requests
 from services.user_memory.memory import get_user_memory
 
 # ── CLIP model (loaded once, cached) ───────────────────────────────────────
 @lru_cache(maxsize=1)
 def load_clip_model():
     device = "cpu"
-    model, _ = clip.load("ViT-B/32", device=device)
-    return model, device
+    model, preprocess = clip.load("ViT-B/32", device=device)
+    return model, preprocess, device
 
 
 def get_text_embedding(text: str):
-    clip_model, device = load_clip_model()
+    clip_model, _, device = load_clip_model()
     tokens = clip.tokenize([text]).to(device)
     with torch.no_grad():
         emb = clip_model.encode_text(tokens)
@@ -24,27 +28,75 @@ def get_text_embedding(text: str):
     return emb.cpu().numpy()[0].tolist()
 
 
+def get_image_embedding(image_str: str):
+    clip_model, preprocess, device = load_clip_model()
+    try:
+        if image_str.startswith("data:image"):
+            header, encoded = image_str.split(",", 1)
+            img = Image.open(BytesIO(base64.b64decode(encoded)))
+        elif image_str.startswith("http"):
+            response = requests.get(image_str)
+            img = Image.open(BytesIO(response.content))
+        else:
+            base = os.path.dirname(os.path.abspath(__file__))
+            root = os.path.join(base, "..", "..", "data")
+            img = Image.open(os.path.join(root, image_str))
+            
+        image_tensor = preprocess(img).unsqueeze(0).to(device)
+        with torch.no_grad():
+            emb = clip_model.encode_image(image_tensor)
+        emb = emb / emb.norm(dim=-1, keepdim=True)
+        return emb.cpu().numpy()[0].tolist()
+    except Exception as e:
+        print(f"Error computing embedding for image: {e}")
+        return None
+
 # ── Product loader (cached at module level) ────────────────────────────────
 _products_cache = None
 
 def load_products():
     global _products_cache
-    if _products_cache is not None:
-        return _products_cache
+    
+    try:
+        res = requests.get("http://127.0.0.1:3000/api/products", timeout=5)
+        if res.status_code == 200:
+            live_products = res.json()
+        else:
+            live_products = []
+    except Exception as e:
+        print(f"Error connecting to backend: {e}")
+        live_products = []
 
-    base = os.path.dirname(os.path.abspath(__file__))
-    root = os.path.join(base, "..", "..", "data")
-
-    for fname in ("products_with_embeddings.json", "products.json"):
-        fpath = os.path.join(root, fname)
+    if not live_products:
+        base = os.path.dirname(os.path.abspath(__file__))
+        fpath = os.path.join(base, "..", "..", "data", "products_with_embeddings.json")
         if os.path.exists(fpath):
             with open(fpath, "r") as f:
-                _products_cache = json.load(f)
-            return _products_cache
+                return json.load(f)
+        return []
 
-    # Fallback: return empty list so API doesn't crash
-    _products_cache = []
-    return _products_cache
+    if _products_cache is None:
+        _products_cache = {}
+        base = os.path.dirname(os.path.abspath(__file__))
+        fpath = os.path.join(base, "..", "..", "data", "products_with_embeddings.json")
+        if os.path.exists(fpath):
+            with open(fpath, "r") as f:
+                cached = json.load(f)
+                for p in cached:
+                    _products_cache[p.get("id", p.get("name"))] = p.get("embedding")
+    
+    for p in live_products:
+        pid = p.get("id", p.get("name"))
+        if pid in _products_cache and _products_cache[pid] is not None:
+            p["embedding"] = _products_cache[pid]
+        elif p.get("image"):
+            print(f"Computing new embedding for product: {p.get('name')}")
+            emb = get_image_embedding(p["image"])
+            if emb:
+                p["embedding"] = emb
+                _products_cache[pid] = emb
+                
+    return live_products
 
 
 # ── Scoring helpers ────────────────────────────────────────────────────────

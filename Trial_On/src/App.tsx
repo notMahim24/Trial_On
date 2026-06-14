@@ -255,7 +255,7 @@ function MainApp() {
   const [isBuyNowSubmitting, setIsBuyNowSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -1292,7 +1292,7 @@ function MainApp() {
                             <input
                               type="range"
                               min="0"
-                              max="1000"
+                              max="10000"
                               step="50"
                               value={priceRange[1]}
                               onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
@@ -1358,7 +1358,7 @@ function MainApp() {
                       <div className="flex justify-end mt-4">
                         <button
                           onClick={() => {
-                            setPriceRange([0, 1000]);
+                            setPriceRange([0, 10000]);
                             setSelectedColors([]);
                             setSelectedSizes([]);
                           }}
@@ -1420,7 +1420,7 @@ function MainApp() {
                     <button onClick={() => {
                       setSearchQuery('');
                       setActiveCategory('All');
-                      setPriceRange([0, 1000]);
+                      setPriceRange([0, 10000]);
                       setSelectedColors([]);
                       setSelectedSizes([]);
                     }} className="mt-4 text-sm font-semibold uppercase tracking-widest border-b border-brand-bg pb-1">Reset Filters</button>

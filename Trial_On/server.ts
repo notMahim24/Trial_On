@@ -74,7 +74,8 @@ async function startServer() {
     })
   );
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // Rate Limiting (apply to all /api routes)
   const apiLimiter = rateLimit({
@@ -106,13 +107,13 @@ async function startServer() {
     name: z.string().min(1, 'Name is required'),
     price: z.number().positive('Price must be positive'),
     category: z.string().min(1, 'Category is required'),
-    image: z.string().url('Must be a valid URL'),
-    image2: z.string().url().optional().nullable(),
-    image3: z.string().url().optional().nullable(),
-    image4: z.string().url().optional().nullable(),
-    image5: z.string().url().optional().nullable(),
-    video: z.string().url().optional().nullable(),
-    video2: z.string().url().optional().nullable(),
+    image: z.string().min(1, 'Image is required'),
+    image2: z.string().optional().nullable(),
+    image3: z.string().optional().nullable(),
+    image4: z.string().optional().nullable(),
+    image5: z.string().optional().nullable(),
+    video: z.string().optional().nullable(),
+    video2: z.string().optional().nullable(),
     description: z.string().optional().nullable(),
     is_available: z.boolean().default(true),
     sizeChart: z.record(z.string(), z.any()).optional().nullable(),
