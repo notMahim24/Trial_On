@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
@@ -23,25 +23,48 @@ import {
 import { cn } from '../lib/utils';
 
 interface AdminAccount {
-  id: number;
+  id: string;
   name: string;
   email: string;
-  role: 'Super Admin' | 'Editor' | 'Support';
+  role: string;
   status: 'Active' | 'Inactive';
   lastLogin: string;
   twoFactor: boolean;
 }
 
-const mockAdmins: AdminAccount[] = [
-  { id: 1, name: 'Admin Tom', email: 'tom@veston.com', role: 'Super Admin', status: 'Active', lastLogin: '2 hours ago', twoFactor: true },
-  { id: 2, name: 'Editor Sarah', email: 'sarah@veston.com', role: 'Editor', status: 'Active', lastLogin: '5 hours ago', twoFactor: true },
-  { id: 3, name: 'Support Mike', email: 'mike@veston.com', role: 'Support', status: 'Inactive', lastLogin: '1 day ago', twoFactor: false },
-  { id: 4, name: 'Admin Jane', email: 'jane@veston.com', role: 'Super Admin', status: 'Active', lastLogin: '10 mins ago', twoFactor: true },
-];
-
 const AdminAccounts: React.FC = () => {
   const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [admins, setAdmins] = useState<AdminAccount[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      try {
+        const res = await fetch('/api/profiles');
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        
+        const mappedData = data.map((profile: any) => ({
+          id: profile.id,
+          name: profile.name || profile.email.split('@')[0],
+          email: profile.email,
+          role: profile.role === 'admin' ? 'Super Admin' : 'User',
+          status: 'Active',
+          lastLogin: new Date(profile.created_at).toLocaleDateString(),
+          twoFactor: false
+        }));
+        
+        setAdmins(mappedData);
+      } catch (err) {
+        console.error("Error fetching profiles:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAdmins();
+  }, []);
 
   return (
     <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
@@ -51,7 +74,7 @@ const AdminAccounts: React.FC = () => {
           <div className="flex items-center gap-4 mb-2">
             <h2 className="text-4xl font-admin-display font-bold text-admin-gold">Admin Accounts</h2>
             <div className="flex items-center gap-2 px-3 py-1 bg-admin-gold/10 text-admin-gold text-[10px] font-bold uppercase tracking-widest border border-admin-gold/20">
-              <ShieldCheck size={10} /> {mockAdmins.length} Active Operators
+              <ShieldCheck size={10} /> {admins.length} Total Users
             </div>
           </div>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">Manage administrative access and permissions</p>
@@ -104,7 +127,13 @@ const AdminAccounts: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockAdmins.map((admin, idx) => (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-admin-gold/40 text-xs uppercase tracking-widest">
+                    Loading users...
+                  </td>
+                </tr>
+              ) : admins.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase()) || a.email.toLowerCase().includes(searchQuery.toLowerCase())).map((admin, idx) => (
                 <motion.tr 
                   key={admin.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -115,7 +144,7 @@ const AdminAccounts: React.FC = () => {
                   <td className="p-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-admin-gold/10 border border-admin-gold/20 flex items-center justify-center text-admin-gold text-xs font-bold">
-                        {admin.name.charAt(0)}
+                        {admin.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <p className="text-sm font-bold tracking-wide group-hover:text-admin-gold transition-colors">{admin.name}</p>

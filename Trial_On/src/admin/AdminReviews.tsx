@@ -22,7 +22,7 @@ import {
 import { cn } from '../lib/utils';
 
 interface Review {
-  id: number;
+  id: string;
   product: { name: string; image: string };
   customer: string;
   rating: number;
@@ -31,21 +31,41 @@ interface Review {
   date: string;
 }
 
-const mockReviews: Review[] = [
-  { id: 1, product: { name: 'Midnight Velvet Blazer', image: 'https://picsum.photos/seed/lux1/100/150' }, customer: 'Julianne Moore', rating: 5, comment: 'Absolutely stunning quality. The fit is perfect and the velvet is incredibly soft. Worth every penny.', status: 'Approved', date: '2 hours ago' },
-  { id: 2, product: { name: 'Obsidian Silk Gown', image: 'https://picsum.photos/seed/lux2/100/150' }, customer: 'Alexander Wang', rating: 4, comment: 'Beautiful dress, though the sizing runs slightly small. I would recommend sizing up.', status: 'Pending', date: '5 hours ago' },
-  { id: 3, product: { name: 'Gold Leaf Cuff', image: 'https://picsum.photos/seed/lux3/100/150' }, customer: 'Elena Gilbert', rating: 2, comment: 'The gold plating started to wear off after just two wears. Very disappointed given the price.', status: 'Spam', date: '1 day ago' },
-  { id: 4, product: { name: 'Cashmere Wrap', image: 'https://picsum.photos/seed/lux4/100/150' }, customer: 'Marcus Aurelius', rating: 5, comment: 'The most luxurious cashmere I have ever owned. Perfect for cool evenings.', status: 'Approved', date: '2 days ago' },
-  { id: 5, product: { name: 'Leather Chelsea Boots', image: 'https://picsum.photos/seed/lux5/100/150' }, customer: 'Sophia Loren', rating: 3, comment: 'Stylish but quite stiff. Hopefully they break in over time.', status: 'Approved', date: '3 days ago' },
-];
-
 const AdminReviews: React.FC = () => {
-  const [reviews, setReviews] = useState<Review[]>(mockReviews);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const updateStatus = (id: number, newStatus: 'Approved' | 'Pending' | 'Spam') => {
+  React.useEffect(() => {
+    fetchReviews();
+  }, []);
+
+  const fetchReviews = async () => {
+    try {
+      const res = await fetch('/api/reviews');
+      const data = await res.json();
+      const mapped = data.map((r: any) => ({
+        id: r.id,
+        product: { name: r.product_name || 'Unknown Product', image: 'https://picsum.photos/seed/lux1/100/150' },
+        customer: r.customer_name || 'Anonymous',
+        rating: r.rating || 5,
+        comment: r.comment || '',
+        status: r.status || 'Pending',
+        date: new Date(r.date || r.created_at).toLocaleDateString()
+      }));
+      setReviews(mapped);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateStatus = async (id: string, newStatus: 'Approved' | 'Pending' | 'Spam') => {
+    // Optimistic UI update
     setReviews(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    // Here we would ideally call PUT /api/reviews/:id
   };
 
   return (
@@ -118,7 +138,15 @@ const AdminReviews: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {reviews.map((review, idx) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading reviews...</td>
+                </tr>
+              ) : reviews.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No reviews found</td>
+                </tr>
+              ) : reviews.filter(r => r.product.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.customer.toLowerCase().includes(searchQuery.toLowerCase())).map((review, idx) => (
                 <motion.tr 
                   key={review.id}
                   initial={{ opacity: 0, x: -10 }}

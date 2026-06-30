@@ -22,6 +22,12 @@ export interface Product {
   size?: string;
   sizeChart?: SizeChartRow[];
   is_available?: boolean | number;
+  gender?: string;
+  brand?: string;
+  occasion?: string;
+  season?: string;
+  fabric?: string;
+  type?: string;
 }
 
 export interface CartItem extends Product {

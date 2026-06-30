@@ -35,13 +35,7 @@ interface Banner {
   image: string;
 }
 
-const mockBanners: Banner[] = [
-  { id: 1, title: 'Summer Collection 2024', placement: 'Hero', status: 'Active', clicks: 12450, ctr: '4.2%', startDate: 'May 01, 2024', endDate: 'Aug 31, 2024', image: 'https://picsum.photos/seed/banner1/800/400' },
-  { id: 2, title: 'VIP Early Access', placement: 'Popup', status: 'Active', clicks: 3200, ctr: '12.5%', startDate: 'May 15, 2024', endDate: 'May 25, 2024', image: 'https://picsum.photos/seed/banner2/400/400' },
-  { id: 3, title: 'Winter Clearance Sale', placement: 'Hero', status: 'Expired', clicks: 45800, ctr: '3.8%', startDate: 'Jan 01, 2024', endDate: 'Feb 28, 2024', image: 'https://picsum.photos/seed/banner3/800/400' },
-  { id: 4, title: 'New Accessories Drop', placement: 'Sidebar', status: 'Scheduled', clicks: 0, ctr: '0%', startDate: 'Jun 01, 2024', endDate: 'Jun 30, 2024', image: 'https://picsum.photos/seed/banner4/300/600' },
-  { id: 5, title: 'Free Shipping Promo', placement: 'Footer', status: 'Active', clicks: 8900, ctr: '1.2%', startDate: 'Mar 01, 2024', endDate: 'Ongoing', image: 'https://picsum.photos/seed/banner5/1200/200' },
-];
+
 
 const AdminBanners: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -85,7 +79,7 @@ const AdminBanners: React.FC = () => {
           <div className="flex items-center gap-4 mb-2">
             <h2 className="text-4xl font-admin-display font-bold text-admin-gold">Banners</h2>
             <span className="px-3 py-1 bg-admin-gold/10 text-admin-gold text-[10px] font-bold uppercase tracking-widest border border-admin-gold/20">
-              {mockBanners.length} Total
+              {banners.length} Total
             </span>
           </div>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">Manage storefront promotions and visual content</p>

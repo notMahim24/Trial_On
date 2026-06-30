@@ -159,3 +159,33 @@ def recommend_outfit(user_info, context):
     scored.sort(key=lambda x: x[1], reverse=True)
     ranked = [item[0] for item in scored]
     return diversify(ranked, limit)
+
+
+def rerank_with_clip(products: list, aesthetic_keyword: str) -> list:
+    """
+    Re-rank a pre-filtered list of products based on an aesthetic/vibe keyword
+    using CLIP semantic embeddings.
+    """
+    if not products or not aesthetic_keyword:
+        return products
+        
+    query_embedding = get_text_embedding(aesthetic_keyword)
+    scored = []
+    
+    # In case products don't have embeddings loaded yet, we load them from cache/live
+    all_products = load_products()
+    emb_map = {str(p.get("id")): p.get("embedding") for p in all_products if p.get("embedding")}
+    
+    for p in products:
+        score = 0
+        p_id = str(p.get("id"))
+        p_emb = p.get("embedding") or emb_map.get(p_id)
+        
+        if p_emb:
+            sim = cosine_similarity(query_embedding, p_emb)
+            score += sim
+            
+        scored.append((p, score))
+        
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return [item[0] for item in scored]

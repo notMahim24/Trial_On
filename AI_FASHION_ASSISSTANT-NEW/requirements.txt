@@ -22,4 +22,7 @@ git+https://github.com/openai/CLIP.git
 langchain
 langchain-mistralai
 requests
-streamlit
+supabase
+langgraph
+langchain-openai
+

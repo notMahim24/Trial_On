@@ -21,7 +21,7 @@ import {
 import { cn } from '../lib/utils';
 
 interface MediaFile {
-  id: number;
+  id: string;
   name: string;
   type: 'image' | 'video' | 'document';
   size: string;
@@ -30,21 +30,35 @@ interface MediaFile {
   uploadedAt: string;
 }
 
-const mockMedia: MediaFile[] = [
-  { id: 1, name: 'hero-banner-summer.jpg', type: 'image', size: '1.2 MB', dimensions: '1920x1080', url: 'https://picsum.photos/seed/lux1/800/600', uploadedAt: '2 hours ago' },
-  { id: 2, name: 'product-video-blazer.mp4', type: 'video', size: '12.5 MB', url: 'https://picsum.photos/seed/lux2/800/600', uploadedAt: '5 hours ago' },
-  { id: 3, name: 'brand-guidelines.pdf', type: 'document', size: '4.8 MB', url: 'https://picsum.photos/seed/lux3/800/600', uploadedAt: '1 day ago' },
-  { id: 4, name: 'velvet-texture-close.jpg', type: 'image', size: '850 KB', dimensions: '1200x1200', url: 'https://picsum.photos/seed/lux4/800/600', uploadedAt: '2 days ago' },
-  { id: 5, name: 'model-runway-obsidian.jpg', type: 'image', size: '2.1 MB', dimensions: '2400x3600', url: 'https://picsum.photos/seed/lux5/800/600', uploadedAt: '3 days ago' },
-  { id: 6, name: 'winter-collection-lookbook.pdf', type: 'document', size: '15.2 MB', url: 'https://picsum.photos/seed/lux6/800/600', uploadedAt: '1 week ago' },
-  { id: 7, name: 'social-ad-square.jpg', type: 'image', size: '450 KB', dimensions: '1080x1080', url: 'https://picsum.photos/seed/lux7/800/600', uploadedAt: '1 week ago' },
-  { id: 8, name: 'bts-photoshoot.mp4', type: 'video', size: '45.0 MB', url: 'https://picsum.photos/seed/lux8/800/600', uploadedAt: '2 weeks ago' },
-];
-
 const AdminMedia: React.FC = () => {
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<MediaFile | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchMedia = async () => {
+      try {
+        const res = await fetch('/api/media');
+        const data = await res.json();
+        const mapped = data.map((m: any) => ({
+          id: m.id,
+          name: m.filename || 'Unnamed File',
+          type: m.type as any || 'image',
+          size: m.size || '0 KB',
+          url: m.url,
+          uploadedAt: new Date(m.created_at).toLocaleDateString()
+        }));
+        setMediaFiles(mapped);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMedia();
+  }, []);
 
   return (
     <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
@@ -118,7 +132,11 @@ const AdminMedia: React.FC = () => {
       {/* Media Content */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {mockMedia.map((file, idx) => (
+          {loading ? (
+            <div className="col-span-full p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading media...</div>
+          ) : mediaFiles.length === 0 ? (
+            <div className="col-span-full p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No media found</div>
+          ) : mediaFiles.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase())).map((file, idx) => (
             <motion.div 
               key={file.id}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -169,7 +187,15 @@ const AdminMedia: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockMedia.map((file, idx) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading media...</td>
+                </tr>
+              ) : mediaFiles.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No media found</td>
+                </tr>
+              ) : mediaFiles.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase())).map((file, idx) => (
                 <tr key={file.id} className="group hover:bg-admin-gold/5 transition-all cursor-pointer" onClick={() => setSelectedFile(file)}>
                   <td className="p-6">
                     <div className="flex items-center gap-4">

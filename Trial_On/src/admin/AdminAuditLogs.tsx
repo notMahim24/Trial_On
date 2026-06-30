@@ -18,28 +18,44 @@ import {
 import { cn } from '../lib/utils';
 
 interface AuditLog {
-  id: number;
+  id: string;
   timestamp: string;
   user: { name: string; avatar?: string };
   action: string;
   ip: string;
-  severity: 'Info' | 'Warning' | 'Danger';
+  severity: 'Info' | 'Warning' | 'Danger' | string;
   details: string;
 }
 
-const mockLogs: AuditLog[] = [
-  { id: 1, timestamp: '2024-05-20 14:32:12', user: { name: 'Admin Tom' }, action: 'Updated Product #124 (Midnight Blazer)', ip: '192.168.1.1', severity: 'Info', details: 'Changed price from $450 to $425' },
-  { id: 2, timestamp: '2024-05-20 13:15:45', user: { name: 'Editor Sarah' }, action: 'Published Banner "Summer 2024"', ip: '192.168.1.45', severity: 'Info', details: 'Status changed from Draft to Active' },
-  { id: 3, timestamp: '2024-05-20 12:05:10', user: { name: 'System' }, action: 'Failed Login Attempt', ip: '45.12.89.231', severity: 'Warning', details: 'Multiple failed attempts for user: root' },
-  { id: 4, timestamp: '2024-05-20 10:45:30', user: { name: 'Admin Tom' }, action: 'Deleted Discount Code "OLD_SALE"', ip: '192.168.1.1', severity: 'Danger', details: 'Permanent deletion of promotional asset' },
-  { id: 5, timestamp: '2024-05-20 09:30:15', user: { name: 'Editor Sarah' }, action: 'Updated Category "Evening Wear"', ip: '192.168.1.45', severity: 'Info', details: 'Modified SEO meta description' },
-  { id: 6, timestamp: '2024-05-19 23:55:00', user: { name: 'System' }, action: 'Database Backup Completed', ip: 'localhost', severity: 'Info', details: 'Backup size: 2.4 GB' },
-  { id: 7, timestamp: '2024-05-19 21:20:12', user: { name: 'Admin Tom' }, action: 'Changed User Role: Julianne Moore', ip: '192.168.1.1', severity: 'Warning', details: 'Role upgraded from Customer to VIP' },
-  { id: 8, timestamp: '2024-05-19 18:10:45', user: { name: 'System' }, action: 'Security Vault Updated', ip: 'internal', severity: 'Danger', details: 'System security parameters recalibrated' },
-];
-
 const AdminAuditLogs: React.FC = () => {
+  const [logs, setLogs] = useState<AuditLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    try {
+      const res = await fetch('/api/audit_logs');
+      const data = await res.json();
+      const mapped = data.map((l: any) => ({
+        id: l.id,
+        timestamp: new Date(l.created_at).toLocaleString(),
+        user: { name: l.user_id ? `User ${l.user_id.substring(0, 4)}` : 'System' },
+        action: l.action || 'Unknown Action',
+        ip: 'Unknown',
+        severity: 'Info',
+        details: l.entity ? `Entity: ${l.entity} (ID: ${l.entity_id})` : ''
+      }));
+      setLogs(mapped);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
@@ -105,7 +121,15 @@ const AdminAuditLogs: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockLogs.map((log, idx) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading logs...</td>
+                </tr>
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No logs found</td>
+                </tr>
+              ) : logs.filter(l => l.action.toLowerCase().includes(searchQuery.toLowerCase()) || l.user.name.toLowerCase().includes(searchQuery.toLowerCase())).map((log, idx) => (
                 <motion.tr 
                   key={log.id}
                   initial={{ opacity: 0 }}
