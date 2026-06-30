@@ -25,27 +25,47 @@ import {
 import { cn } from '../lib/utils';
 
 interface Discount {
-  id: number;
+  id: string;
   code: string;
-  type: 'Percentage' | 'Fixed Amount' | 'BOGO' | 'Free Shipping';
+  type: string;
   value: string;
   usage: string;
-  status: 'Active' | 'Scheduled' | 'Expired';
+  status: 'Active' | 'Scheduled' | 'Expired' | string;
   startDate: string;
   endDate: string;
 }
 
-const mockDiscounts: Discount[] = [
-  { id: 1, code: 'VESTON20', type: 'Percentage', value: '20%', usage: '1,240 / ∞', status: 'Active', startDate: 'May 01, 2024', endDate: 'Dec 31, 2024' },
-  { id: 2, code: 'WELCOME100', type: 'Fixed Amount', value: '$100.00', usage: '450 / 1,000', status: 'Active', startDate: 'Jan 01, 2024', endDate: 'Ongoing' },
-  { id: 3, code: 'SUMMER_BOGO', type: 'BOGO', value: 'Buy 1 Get 1', usage: '89 / 500', status: 'Scheduled', startDate: 'Jun 01, 2024', endDate: 'Aug 31, 2024' },
-  { id: 4, code: 'FREESHIP_VIP', type: 'Free Shipping', value: 'Free', usage: '210 / ∞', status: 'Active', startDate: 'Mar 15, 2024', endDate: 'Ongoing' },
-  { id: 5, code: 'FLASH50', type: 'Percentage', value: '50%', usage: '500 / 500', status: 'Expired', startDate: 'May 10, 2024', endDate: 'May 11, 2024' },
-];
-
 const AdminDiscounts: React.FC = () => {
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    fetchDiscounts();
+  }, []);
+
+  const fetchDiscounts = async () => {
+    try {
+      const res = await fetch('/api/discounts');
+      const data = await res.json();
+      const mapped = data.map((d: any) => ({
+        id: d.id,
+        code: d.code,
+        type: d.type || 'Percentage',
+        value: d.value || '0',
+        usage: '0 / ∞',
+        status: d.status || 'Active',
+        startDate: new Date(d.created_at).toLocaleDateString(),
+        endDate: d.expires_at ? new Date(d.expires_at).toLocaleDateString() : 'Ongoing'
+      }));
+      setDiscounts(mapped);
+    } catch (err) {
+      console.error('Error fetching discounts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
@@ -55,7 +75,7 @@ const AdminDiscounts: React.FC = () => {
           <div className="flex items-center gap-4 mb-2">
             <h2 className="text-4xl font-admin-display font-bold text-admin-gold">Discounts</h2>
             <span className="px-3 py-1 bg-admin-gold/10 text-admin-gold text-[10px] font-bold uppercase tracking-widest border border-admin-gold/20">
-              {mockDiscounts.length} Active Codes
+              {discounts.length} Active Codes
             </span>
           </div>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">Configure promotional offers and coupons</p>
@@ -119,7 +139,15 @@ const AdminDiscounts: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockDiscounts.map((discount, idx) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading discounts...</td>
+                </tr>
+              ) : discounts.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No discounts found</td>
+                </tr>
+              ) : discounts.filter(d => d.code.toLowerCase().includes(searchQuery.toLowerCase())).map((discount, idx) => (
                 <motion.tr 
                   key={discount.id}
                   initial={{ opacity: 0, y: 10 }}

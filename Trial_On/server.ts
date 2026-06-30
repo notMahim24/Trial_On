@@ -12,6 +12,8 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { z } from 'zod';
+import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 import {
   uploadImageToComfyUI,
   submitComfyUIWorkflow,
@@ -30,10 +32,10 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn("⚠️ WARNING: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing from environment variables.");
+  console.warn("⚠️ WARNING: VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are missing from environment variables.");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
@@ -47,7 +49,17 @@ async function startServer() {
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
   })); // Secure HTTP headers (CSP disabled for Vite HMR compatibility)
-  app.use(cors()); // Enable CORS for all origins (adjust in prod if needed)
+  
+  const allowedOrigins = process.env.VITE_ALLOWED_ORIGIN ? process.env.VITE_ALLOWED_ORIGIN.split(',') : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173'];
+  app.use(cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS policy violation'), false);
+      }
+    }
+  }));
   app.use(morgan('dev')); // Structured request logging
 
   // ── AI PROXY (must be before rate limiter to avoid conflicts) ────────────
@@ -74,7 +86,8 @@ async function startServer() {
     })
   );
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // Rate Limiting (apply to all /api routes)
   const apiLimiter = rateLimit({
@@ -106,16 +119,22 @@ async function startServer() {
     name: z.string().min(1, 'Name is required'),
     price: z.number().positive('Price must be positive'),
     category: z.string().min(1, 'Category is required'),
-    image: z.string().url('Must be a valid URL'),
-    image2: z.string().url().optional().nullable(),
-    image3: z.string().url().optional().nullable(),
-    image4: z.string().url().optional().nullable(),
-    image5: z.string().url().optional().nullable(),
-    video: z.string().url().optional().nullable(),
-    video2: z.string().url().optional().nullable(),
+    image: z.string().min(1, 'Image is required'),
+    image2: z.string().optional().nullable(),
+    image3: z.string().optional().nullable(),
+    image4: z.string().optional().nullable(),
+    image5: z.string().optional().nullable(),
+    video: z.string().optional().nullable(),
+    video2: z.string().optional().nullable(),
     description: z.string().optional().nullable(),
     is_available: z.boolean().default(true),
     sizeChart: z.record(z.string(), z.any()).optional().nullable(),
+    gender: z.string().optional().nullable(),
+    brand: z.string().optional().nullable(),
+    occasion: z.string().optional().nullable(),
+    season: z.string().optional().nullable(),
+    fabric: z.string().optional().nullable(),
+    type: z.string().optional().nullable(),
   });
 
   const OrderSchema = z.object({
@@ -137,6 +156,19 @@ async function startServer() {
     subject: z.string().optional().nullable(),
     message: z.string().min(1, 'Message is required'),
     is_read: z.boolean().default(false).optional(),
+  });
+
+  const AuthSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(6),
+    name: z.string().optional(),
+  });
+
+  const ProfileSchema = z.object({
+    name: z.string().optional(),
+    phone: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    avatar_url: z.string().optional().nullable(),
   });
   // ----------------------------------
 
@@ -290,14 +322,25 @@ async function startServer() {
   app.post("/api/products", async (req: any, res: any, next: any) => {
     try {
       const validatedData = ProductSchema.parse(req.body);
-      const { name, price, category, image, image2, image3, image4, image5, video, video2, description, is_available, sizeChart } = validatedData;
+      const { name, price, category, image, image2, image3, image4, image5, video, video2, description, is_available, sizeChart, gender, brand, occasion, season, fabric, type } = validatedData;
       const { data, error } = await supabase.from('products').insert([{
         name, price, category, image, image2: image2 || null, image3: image3 || null,
         image4: image4 || null, image5: image5 || null, video: video || null, video2: video2 || null,
-        description, is_available: is_available === false ? 0 : 1, size_chart: sizeChart ? JSON.stringify(sizeChart) : null
+        description, is_available: is_available === false ? 0 : 1, size_chart: sizeChart ? JSON.stringify(sizeChart) : null,
+        gender: gender || null, brand: brand || null, occasion: occasion || null, season: season || null, fabric: fabric || null, type: type || null
       }]).select('id').single();
 
       if (error) throw error;
+      
+      // Background task: trigger AI to generate visual embedding
+      if (data?.id && image) {
+        fetch('http://127.0.0.1:8000/api/v1/embed-product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: data.id, image_url: image })
+        }).catch(err => console.error('[EMBEDDING TRIGGER ERROR]', err.message));
+      }
+      
       res.json({ success: true, id: data?.id });
     } catch (err: any) {
       next(err);
@@ -308,14 +351,25 @@ async function startServer() {
     try {
       const { id } = req.params;
       const validatedData = ProductSchema.parse(req.body);
-      const { name, price, category, image, image2, image3, image4, image5, video, video2, description, is_available, sizeChart } = validatedData;
+      const { name, price, category, image, image2, image3, image4, image5, video, video2, description, is_available, sizeChart, gender, brand, occasion, season, fabric, type } = validatedData;
       const { error } = await supabase.from('products').update({
         name, price, category, image, image2: image2 || null, image3: image3 || null,
         image4: image4 || null, image5: image5 || null, video: video || null, video2: video2 || null,
-        description, is_available: is_available === false ? 0 : 1, size_chart: sizeChart ? JSON.stringify(sizeChart) : null
+        description, is_available: is_available === false ? 0 : 1, size_chart: sizeChart ? JSON.stringify(sizeChart) : null,
+        gender: gender || null, brand: brand || null, occasion: occasion || null, season: season || null, fabric: fabric || null, type: type || null
       }).eq('id', id);
 
       if (error) throw error;
+      
+      // Background task: trigger AI to update visual embedding
+      if (image) {
+        fetch('http://127.0.0.1:8000/api/v1/embed-product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: parseInt(id), image_url: image })
+        }).catch(err => console.error('[EMBEDDING TRIGGER ERROR]', err.message));
+      }
+      
       res.json({ success: true });
     } catch (err: any) {
       next(err);
@@ -485,6 +539,191 @@ async function startServer() {
       const { data, error } = await supabase.from('banners').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       res.json(data || []);
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  // --- NEW DASHBOARD ENDPOINTS ---
+  const createSimpleGetRoute = (path: string, table: string) => {
+    app.get(path, async (req: any, res: any, next: any) => {
+      try {
+        const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        res.json(data || []);
+      } catch (err: any) {
+        next(err);
+      }
+    });
+  };
+
+  createSimpleGetRoute("/api/reviews", "reviews");
+  createSimpleGetRoute("/api/discounts", "discounts");
+  createSimpleGetRoute("/api/tags", "tags");
+  createSimpleGetRoute("/api/blog_posts", "blog_posts");
+  createSimpleGetRoute("/api/audit_logs", "audit_logs");
+  createSimpleGetRoute("/api/transactions", "transactions");
+  createSimpleGetRoute("/api/media", "media");
+
+  // --- AUTH & PROFILES ENDPOINTS ---
+  // Using bcrypt for password hashing
+
+  app.post("/api/auth/signup", async (req: any, res: any, next: any) => {
+    try {
+      const validatedData = AuthSchema.parse(req.body);
+      const password_hash = await bcrypt.hash(validatedData.password, 10);
+      
+      const { data, error } = await supabase.from('profiles').insert([{ 
+        email: validatedData.email, 
+        password_hash,
+        name: validatedData.name || validatedData.email.split('@')[0],
+        role: 'user'
+      }]).select('*').single();
+
+      if (error) throw error;
+      res.json({ success: true, user: { id: data.id, email: data.email, name: data.name, role: data.role } });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.post("/api/auth/login", async (req: any, res: any, next: any) => {
+    try {
+      const { email, password } = req.body;
+      
+      const { data, error } = await supabase.from('profiles')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      let isMatch = false;
+      if (data) {
+        isMatch = await bcrypt.compare(password, data.password_hash);
+      }
+
+      if (error || !data || !isMatch) {
+         // Special fallback for hardcoded admin if not in DB yet
+         const adminEmail = process.env.VITE_ADMIN_EMAIL || 'admin@zelori.com';
+         const adminPassword = process.env.VITE_ADMIN_PASSWORD;
+         
+         if (adminPassword && email === adminEmail && password === adminPassword) {
+           return res.json({ success: true, user: { id: 'admin-1', email, name: 'Admin', role: 'admin' } });
+         }
+         return res.status(401).json({ success: false, error: 'Invalid credentials' });
+      }
+      
+      res.json({ success: true, user: { id: data.id, email: data.email, name: data.name, role: data.role } });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.get("/api/profiles", async (req: any, res: any, next: any) => {
+    try {
+      const { data, error } = await supabase.from('profiles').select('id, email, name, role, phone, address, avatar_url, created_at').order('created_at', { ascending: false });
+      if (error) throw error;
+      res.json(data);
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.get("/api/profiles/:id", async (req: any, res: any, next: any) => {
+    try {
+      const { data, error } = await supabase.from('profiles').select('id, email, name, role, phone, address, avatar_url, created_at').eq('id', req.params.id).single();
+      if (error) throw error;
+      res.json(data);
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.put("/api/profiles/:id", async (req: any, res: any, next: any) => {
+    try {
+      const validatedData = ProfileSchema.parse(req.body);
+      const { error } = await supabase.from('profiles').update(validatedData).eq('id', req.params.id);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  // --- AI CHAT HISTORY ENDPOINTS ---
+  app.get("/api/chat/sessions/:userId", async (req: any, res: any, next: any) => {
+    try {
+      const { data, error } = await supabase.from('chat_sessions').select('*').eq('user_id', req.params.userId).order('updated_at', { ascending: false });
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.get("/api/chat/messages/:sessionId", async (req: any, res: any, next: any) => {
+    try {
+      const { data, error } = await supabase.from('chat_messages').select('*').eq('session_id', req.params.sessionId).order('created_at', { ascending: true });
+      if (error) throw error;
+      res.json(data || []);
+    } catch (err: any) {
+      next(err);
+    }
+  });
+
+  app.post("/api/chat/wrapper", async (req: any, res: any, next: any) => {
+    try {
+      const { userId, sessionId, user_message, chat_history } = req.body;
+      
+      let currentSessionId = sessionId;
+      
+      // 1. If user is logged in but no session, create one
+      if (userId && !currentSessionId) {
+        const { data: newSession, error: sessionErr } = await supabase.from('chat_sessions').insert([{
+           user_id: userId,
+           title: user_message.substring(0, 30) + '...'
+        }]).select('id').single();
+        if (!sessionErr && newSession) {
+           currentSessionId = newSession.id;
+        }
+      }
+
+      // 2. Save User Message
+      if (currentSessionId) {
+         await supabase.from('chat_messages').insert([{
+           session_id: currentSessionId,
+           role: 'user',
+           content: user_message
+         }]);
+      }
+
+      // 3. Call AI Assistant Python Backend directly via fetch
+      const aiRes = await fetch('http://127.0.0.1:8000/api/v1/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_message, chat_history: chat_history || [] })
+      });
+      
+      if (!aiRes.ok) {
+        throw new Error("AI Assistant failed to respond");
+      }
+      const aiData = await aiRes.json();
+      
+      // 4. Save AI Response
+      if (currentSessionId && aiData.reply) {
+         await supabase.from('chat_messages').insert([{
+           session_id: currentSessionId,
+           role: 'assistant',
+           content: aiData.reply,
+           recommendations: aiData.recommendations ? JSON.stringify(aiData.recommendations) : null
+         }]);
+      }
+
+      // 5. Return to frontend
+      res.json({
+        sessionId: currentSessionId,
+        reply: aiData.reply,
+        recommendations: aiData.recommendations
+      });
     } catch (err: any) {
       next(err);
     }

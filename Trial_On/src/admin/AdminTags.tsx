@@ -21,26 +21,43 @@ import {
 import { cn } from '../lib/utils';
 
 interface Attribute {
-  id: number;
+  id: string;
   name: string;
-  type: 'Tag' | 'Size' | 'Color' | 'Material';
+  type: string;
   usage: number;
-  status: 'Active' | 'Inactive';
+  status: 'Active' | 'Inactive' | string;
   values?: string[];
 }
 
-const mockAttributes: Attribute[] = [
-  { id: 1, name: 'Summer 2024', type: 'Tag', usage: 124, status: 'Active' },
-  { id: 2, name: 'Standard Sizes', type: 'Size', usage: 450, status: 'Active', values: ['XS', 'S', 'M', 'L', 'XL'] },
-  { id: 3, name: 'Obsidian Black', type: 'Color', usage: 89, status: 'Active', values: ['#080808'] },
-  { id: 4, name: 'Italian Silk', type: 'Material', usage: 56, status: 'Active' },
-  { id: 5, name: 'Limited Edition', type: 'Tag', usage: 12, status: 'Active' },
-  { id: 6, name: 'Midnight Velvet', type: 'Material', usage: 34, status: 'Active' },
-];
-
 const AdminTags: React.FC = () => {
+  const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    fetchTags();
+  }, []);
+
+  const fetchTags = async () => {
+    try {
+      const res = await fetch('/api/tags');
+      const data = await res.json();
+      const mapped = data.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        type: t.type || 'Tag',
+        usage: 0,
+        status: 'Active',
+        values: []
+      }));
+      setAttributes(mapped);
+    } catch (err) {
+      console.error('Error fetching tags:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
@@ -50,7 +67,7 @@ const AdminTags: React.FC = () => {
           <div className="flex items-center gap-4 mb-2">
             <h2 className="text-4xl font-admin-display font-bold text-admin-gold">Tags & Attributes</h2>
             <span className="px-3 py-1 bg-admin-gold/10 text-admin-gold text-[10px] font-bold uppercase tracking-widest border border-admin-gold/20">
-              {mockAttributes.length} Defined
+              {attributes.length} Defined
             </span>
           </div>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">Define product variations and organizational tags</p>
@@ -104,7 +121,15 @@ const AdminTags: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockAttributes.map((attr, idx) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading tags...</td>
+                </tr>
+              ) : attributes.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No tags found</td>
+                </tr>
+              ) : attributes.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase())).map((attr, idx) => (
                 <motion.tr 
                   key={attr.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -127,7 +152,7 @@ const AdminTags: React.FC = () => {
                   </td>
                   <td className="p-6">
                     <div className="flex flex-wrap gap-2">
-                      {attr.values ? attr.values.map(v => (
+                      {attr.values && attr.values.length > 0 ? attr.values.map(v => (
                         <span key={v} className="px-2 py-0.5 bg-black/20 border border-admin-gold/10 text-[8px] font-bold uppercase tracking-widest text-admin-gold/60">
                           {v}
                         </span>

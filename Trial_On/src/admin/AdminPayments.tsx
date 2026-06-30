@@ -28,22 +28,47 @@ interface Transaction {
   amount: number;
   fee: number;
   net: number;
-  status: 'Succeeded' | 'Pending' | 'Refunded' | 'Failed';
-  method: 'Stripe' | 'PayPal' | 'Apple Pay';
+  status: 'Succeeded' | 'Pending' | 'Refunded' | 'Failed' | string;
+  method: 'Stripe' | 'PayPal' | 'Apple Pay' | string;
   date: string;
 }
 
-const mockTransactions: Transaction[] = [
-  { id: 'txn_3MvX92Lp092', orderId: '#ORD-8821', customer: 'Julianne Moore', amount: 1240.00, fee: 36.26, net: 1203.74, status: 'Succeeded', method: 'Stripe', date: '2 hours ago' },
-  { id: 'txn_3MvX92Lp093', orderId: '#ORD-8822', customer: 'Alexander Wang', amount: 450.00, fee: 13.35, net: 436.65, status: 'Pending', method: 'PayPal', date: '5 hours ago' },
-  { id: 'txn_3MvX92Lp094', orderId: '#ORD-8823', customer: 'Elena Gilbert', amount: 890.00, fee: 26.11, net: 863.89, status: 'Refunded', method: 'Apple Pay', date: '1 day ago' },
-  { id: 'txn_3MvX92Lp095', orderId: '#ORD-8824', customer: 'Marcus Aurelius', amount: 3200.00, fee: 93.10, net: 3106.90, status: 'Succeeded', method: 'Stripe', date: '2 days ago' },
-  { id: 'txn_3MvX92Lp096', orderId: '#ORD-8825', customer: 'Sophia Loren', amount: 150.00, fee: 4.65, net: 145.35, status: 'Failed', method: 'Stripe', date: '3 days ago' },
-];
-
 const AdminPayments: React.FC = () => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      const res = await fetch('/api/transactions');
+      const data = await res.json();
+      const mapped = data.map((t: any) => {
+        const amount = Number(t.amount) || 0;
+        const fee = amount * 0.029 + 0.30;
+        return {
+          id: t.id,
+          orderId: t.order_id ? `#ORD-${t.order_id.substring(0,6).toUpperCase()}` : 'Unknown Order',
+          customer: 'Unknown Customer',
+          amount: amount,
+          fee: fee,
+          net: amount - fee,
+          status: t.status || 'Pending',
+          method: t.payment_method || 'Stripe',
+          date: new Date(t.created_at).toLocaleString()
+        };
+      });
+      setTransactions(mapped);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
@@ -141,7 +166,15 @@ const AdminPayments: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockTransactions.map((txn, idx) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading transactions...</td>
+                </tr>
+              ) : transactions.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No transactions found</td>
+                </tr>
+              ) : transactions.filter(t => t.id.toLowerCase().includes(searchQuery.toLowerCase()) || t.orderId.toLowerCase().includes(searchQuery.toLowerCase())).map((txn, idx) => (
                 <motion.tr 
                   key={txn.id}
                   initial={{ opacity: 0, y: 10 }}

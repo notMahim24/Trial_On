@@ -65,9 +65,13 @@ const AdminProducts: React.FC = () => {
         fetchProducts();
         setIsAddPanelOpen(false);
         setEditingProduct(null);
+      } else {
+        const errData = await res.json().catch(() => null);
+        alert(`Failed to save product: ${errData?.error || res.statusText}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error);
+      alert('Network error while saving product. Check console.');
     }
   };
 
@@ -154,7 +158,7 @@ const AdminProducts: React.FC = () => {
           </button>
           <button 
             onClick={() => {
-              setEditingProduct({ name: '', price: 0, category: 'Dresses', image: '', video: '', description: '' });
+              setEditingProduct({ name: '', price: 0, category: 'Dresses', image: '', video: '', description: '', is_available: true });
               setIsAddPanelOpen(true);
             }}
             className="flex items-center gap-2 px-8 py-4 bg-admin-gold text-admin-bg text-[10px] uppercase tracking-[0.3em] font-bold hover:bg-admin-gold/90 transition-all shadow-[0_0_20px_rgba(201,168,76,0.2)]"
@@ -559,6 +563,71 @@ const AdminProducts: React.FC = () => {
                         placeholder="Describe the craftsmanship and material details..." 
                         value={editingProduct?.description || ''}
                         onChange={(e) => setEditingProduct(prev => ({ ...prev!, description: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 1.5: Metadata & Attributes */}
+                <section className="space-y-8">
+                  <div className="flex items-center gap-3 border-b border-admin-gold/10 pb-4">
+                    <Settings size={18} className="text-admin-gold" />
+                    <h4 className="text-[10px] uppercase tracking-[0.4em] font-bold text-admin-gold">Metadata & Attributes</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Gender</label>
+                      <select 
+                        className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all appearance-none"
+                        value={editingProduct?.gender || ''}
+                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, gender: e.target.value }))}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Unisex">Unisex</option>
+                        <option value="Kids">Kids</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Occasion</label>
+                      <input 
+                        type="text" 
+                        className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" 
+                        placeholder="e.g. casual, university, Eid" 
+                        value={editingProduct?.occasion || ''}
+                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, occasion: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Season</label>
+                      <input 
+                        type="text" 
+                        className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" 
+                        placeholder="e.g. summer, winter, monsoon" 
+                        value={editingProduct?.season || ''}
+                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, season: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Fabric</label>
+                      <input 
+                        type="text" 
+                        className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" 
+                        placeholder="e.g. cotton, silk" 
+                        value={editingProduct?.fabric || ''}
+                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, fabric: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Type</label>
+                      <input 
+                        type="text" 
+                        className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" 
+                        placeholder="e.g. t-shirt, dress, panjabi" 
+                        value={editingProduct?.type || ''}
+                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, type: e.target.value }))}
                       />
                     </div>
                   </div>

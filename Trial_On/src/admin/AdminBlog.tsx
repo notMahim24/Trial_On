@@ -23,27 +23,47 @@ import {
 import { cn } from '../lib/utils';
 
 interface BlogPost {
-  id: number;
+  id: string;
   title: string;
   author: string;
   category: string;
-  status: 'Published' | 'Draft' | 'Scheduled';
+  status: 'Published' | 'Draft' | 'Scheduled' | string;
   date: string;
   views: number;
   comments: number;
 }
 
-const mockPosts: BlogPost[] = [
-  { id: 1, title: 'The Art of Italian Silk: A Masterclass', author: 'Julianne Moore', category: 'Craftsmanship', status: 'Published', date: 'May 15, 2024', views: 1240, comments: 12 },
-  { id: 2, title: 'Summer 2024: The Obsidian Collection', author: 'Alexander Wang', category: 'Collections', status: 'Published', date: 'May 10, 2024', views: 3500, comments: 45 },
-  { id: 3, title: 'Sustainability in Luxury Fashion', author: 'Elena Gilbert', category: 'Ethics', status: 'Scheduled', date: 'Jun 01, 2024', views: 0, comments: 0 },
-  { id: 4, title: 'Behind the Scenes: New York Fashion Week', author: 'Julianne Moore', category: 'Events', status: 'Draft', date: '-', views: 0, comments: 0 },
-  { id: 5, title: 'The Evolution of the Midnight Blazer', author: 'Marcus Aurelius', category: 'Design', status: 'Published', date: 'Apr 20, 2024', views: 890, comments: 8 },
-];
-
 const AdminBlog: React.FC = () => {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      const res = await fetch('/api/blog_posts');
+      const data = await res.json();
+      const mapped = data.map((p: any) => ({
+        id: p.id,
+        title: p.title || 'Untitled',
+        author: p.author || 'Anonymous',
+        category: p.category || 'Uncategorized',
+        status: p.published_at ? 'Published' : 'Draft',
+        date: new Date(p.published_at || p.created_at).toLocaleDateString(),
+        views: 0,
+        comments: 0
+      }));
+      setPosts(mapped);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
@@ -53,7 +73,7 @@ const AdminBlog: React.FC = () => {
           <div className="flex items-center gap-4 mb-2">
             <h2 className="text-4xl font-admin-display font-bold text-admin-gold">Blog Posts</h2>
             <span className="px-3 py-1 bg-admin-gold/10 text-admin-gold text-[10px] font-bold uppercase tracking-widest border border-admin-gold/20">
-              {mockPosts.length} Articles
+              {posts.length} Articles
             </span>
           </div>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">Manage your brand's editorial voice</p>
@@ -114,7 +134,15 @@ const AdminBlog: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockPosts.map((post, idx) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">Loading articles...</td>
+                </tr>
+              ) : posts.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-20 text-center uppercase tracking-widest text-admin-gold opacity-30">No articles found</td>
+                </tr>
+              ) : posts.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.author.toLowerCase().includes(searchQuery.toLowerCase())).map((post, idx) => (
                 <motion.tr 
                   key={post.id}
                   initial={{ opacity: 0, y: 10 }}

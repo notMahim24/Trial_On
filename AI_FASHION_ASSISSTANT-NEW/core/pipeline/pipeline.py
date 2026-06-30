@@ -40,28 +40,13 @@ def run_pipeline(user_input: str, chat_history=None):
     recommendations = []
     
     if action == "recommend":
-        # We check the FULL context (not just the current message) for missing pieces
-        missing = []
-        if not full_context.get("occasion"): missing.append("occasion (e.g. wedding, office)")
-        if not full_context.get("style"): missing.append("style (e.g. formal, traditional)")
+        # Run the recommendation engine using CLIP embeddings immediately
+        # We no longer force the user to answer occasion/style questions
+        recommendations = recommend_outfit(user_info, full_context)
         
-        if missing:
-            # If we're missing info, we switch to 'clarify' mode
-            action = "clarify"
-            missing_label = " and ".join(missing)
-            
-            prompt = f"""
-            The user wants fashion help. You already know: {full_context}.
-            However, you are still missing the {missing_label}.
-            
-            As a premium personal stylist, acknowledge what you know and ask a 
-            friendly follow-up question to get the missing {missing_label}.
-            """
-            assistant_reply = ask_llm(prompt, chat_history)
+        if not recommendations:
+            assistant_reply = "I couldn't find any perfect matches for that right now. Could you tell me more about what you're looking for?"
         else:
-            # We have everything! occasion, style, and category.
-            # Run the recommendation engine using CLIP embeddings
-            recommendations = recommend_outfit(user_info, full_context)
             assistant_reply = generate_response(full_context, recommendations)
     
     elif action == "advice":

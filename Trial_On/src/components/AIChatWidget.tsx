@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, X, Send, Loader2, MessageSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -14,7 +15,9 @@ interface AIChatWidgetProps {
 }
 
 export default function AIChatWidget({ onProductClick }: AIChatWidgetProps = {}) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'Hello! I am your personal AI Stylist. Looking for an outfit for a specific occasion?' }
   ]);
@@ -32,6 +35,42 @@ export default function AIChatWidget({ onProductClick }: AIChatWidgetProps = {})
     }
   }, [messages, isOpen]);
 
+  // Fetch chat history on load if user is logged in
+  useEffect(() => {
+    // Only fetch if user ID looks like a valid UUID (36 chars) to prevent Supabase 500 errors for mock users like "admin-1"
+    const isValidUUID = user?.id && user.id.length === 36 && user.id.includes('-');
+    if (user && isValidUUID && isOpen && !sessionId) {
+      const fetchHistory = async () => {
+        try {
+          const res = await fetch(`/api/chat/sessions/${user.id}`);
+          if (!res.ok) return;
+          const sessions = await res.json();
+          if (sessions && sessions.length > 0) {
+            const latestSession = sessions[0];
+            setSessionId(latestSession.id);
+            
+            const msgRes = await fetch(`/api/chat/messages/${latestSession.id}`);
+            if (!msgRes.ok) return;
+            const pastMessages = await msgRes.json();
+            
+            if (pastMessages && pastMessages.length > 0) {
+              const formattedMessages: Message[] = pastMessages.map((m: any) => ({
+                role: m.role,
+                content: m.content,
+                products: typeof m.recommendations === 'string' ? JSON.parse(m.recommendations) : m.recommendations
+              }));
+              
+              setMessages([{ role: 'assistant', content: 'Hello! I am your personal AI Stylist. Looking for an outfit for a specific occasion?' }, ...formattedMessages]);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch chat history:", err);
+        }
+      };
+      fetchHistory();
+    }
+  }, [user, isOpen]);
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -47,20 +86,28 @@ export default function AIChatWidget({ onProductClick }: AIChatWidgetProps = {})
         content: m.content
       }));
 
-      const res = await fetch('/api/ai-assistant/chat', {
+      const res = await fetch('/api/chat/wrapper', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_message: userMessage, chat_history: chatHistory })
+        body: JSON.stringify({ 
+           userId: user?.id,
+           sessionId: sessionId,
+           user_message: userMessage, 
+           chat_history: chatHistory 
+        })
       });
 
       if (!res.ok) throw new Error('API Error');
 
       const data = await res.json();
+      if (data.sessionId && !sessionId) {
+        setSessionId(data.sessionId);
+      }
       
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: data.reply || "I couldn't process that, sorry.", 
-        products: data.recommendations 
+        products: typeof data.recommendations === 'string' ? JSON.parse(data.recommendations) : data.recommendations 
       }]);
     } catch (err) {
       console.error(err);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   User, 
@@ -18,8 +18,48 @@ import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 
 const AdminProfile: React.FC = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('Profile');
+  const [profile, setProfile] = useState<any>({ name: '', email: '', phone: '', address: '' });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetch(`/api/profiles/${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            setProfile(data);
+          } else {
+            setProfile({ ...profile, name: user.name, email: user.email });
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!user?.id) return;
+    setIsSaving(true);
+    try {
+      await fetch(`/api/profiles/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: profile.name,
+          phone: profile.phone,
+          address: profile.address
+        })
+      });
+      updateUser({ name: profile.name });
+      alert('Profile updated successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const tabs = [
     { name: 'Profile', icon: User },
@@ -35,8 +75,12 @@ const AdminProfile: React.FC = () => {
           <h2 className="text-4xl font-admin-display font-bold text-admin-gold">My Profile</h2>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30 mt-1">Manage your administrative identity</p>
         </div>
-        <button className="flex items-center gap-2 px-10 py-4 bg-admin-gold text-admin-bg text-[10px] uppercase tracking-[0.3em] font-bold hover:bg-admin-gold/90 transition-all shadow-[0_0_30px_rgba(201,168,76,0.3)]">
-          <Save size={16} /> Update Profile
+        <button 
+          onClick={handleSave}
+          disabled={isSaving}
+          className="flex items-center gap-2 px-10 py-4 bg-admin-gold text-admin-bg text-[10px] uppercase tracking-[0.3em] font-bold hover:bg-admin-gold/90 transition-all shadow-[0_0_30px_rgba(201,168,76,0.3)] disabled:opacity-50"
+        >
+          <Save size={16} /> {isSaving ? 'Updating...' : 'Update Profile'}
         </button>
       </div>
 
@@ -53,7 +97,7 @@ const AdminProfile: React.FC = () => {
               </button>
             </div>
             <div>
-              <h3 className="text-xl font-admin-display font-bold text-admin-gold">{user?.name || 'Admin'}</h3>
+              <h3 className="text-xl font-admin-display font-bold text-admin-gold">{profile.name || user?.name || 'Admin'}</h3>
               <p className="text-[10px] uppercase tracking-widest font-bold opacity-30 mt-1">{user?.role === 'admin' ? 'Super Admin' : 'Staff'}</p>
             </div>
           </div>
@@ -93,15 +137,30 @@ const AdminProfile: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Full Name</label>
-                    <input type="text" defaultValue={user?.name || 'Admin'} className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" />
+                    <input 
+                      type="text" 
+                      value={profile.name || ''} 
+                      onChange={e => setProfile({...profile, name: e.target.value})}
+                      className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" 
+                    />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Email Address</label>
-                    <input type="email" defaultValue={user?.email || 'admin@veston.com'} className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" />
+                    <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Email Address (Read Only)</label>
+                    <input 
+                      type="email" 
+                      value={profile.email || ''} 
+                      readOnly
+                      className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none opacity-50 cursor-not-allowed" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Phone Number</label>
-                    <input type="tel" defaultValue="+1 (555) 000-0000" className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" />
+                    <input 
+                      type="tel" 
+                      value={profile.phone || ''} 
+                      onChange={e => setProfile({...profile, phone: e.target.value})}
+                      className="w-full bg-black/20 border border-admin-gold/10 px-5 py-4 text-sm focus:outline-none focus:border-admin-gold transition-all" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase tracking-widest font-bold opacity-40">Language</label>

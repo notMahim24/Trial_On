@@ -9,17 +9,20 @@ const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const { signup } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
     try {
       await signup(name, email, password);
       navigate('/');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setError(err.message || 'Failed to create account. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -66,6 +69,16 @@ const Signup: React.FC = () => {
             <h2 className="text-4xl font-admin-display font-bold text-white tracking-tight">Create Account</h2>
             <p className="text-zinc-500 text-sm">Join our exclusive community for early access and bespoke services.</p>
           </div>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="px-4 py-3 border border-red-500/25 bg-red-500/8 text-red-400 text-[10px] uppercase tracking-widest font-bold text-center"
+            >
+              {error}
+            </motion.div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-6">

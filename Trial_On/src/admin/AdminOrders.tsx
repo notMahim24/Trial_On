@@ -38,16 +38,7 @@ interface Order {
   fulfillmentStatus: 'Unfulfilled' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
 }
 
-const mockOrders: Order[] = [
-  { id: 'ORD-8821', date: '2024-05-20 14:32', customer: { name: 'Julianne Moore', email: 'j.moore@example.com' }, items: 3, total: 1240.00, paymentStatus: 'Paid', fulfillmentStatus: 'Processing' },
-  { id: 'ORD-8820', date: '2024-05-20 12:15', customer: { name: 'Alexander Wang', email: 'wang.a@example.com' }, items: 1, total: 450.00, paymentStatus: 'Paid', fulfillmentStatus: 'Shipped' },
-  { id: 'ORD-8819', date: '2024-05-19 18:45', customer: { name: 'Elena Gilbert', email: 'elena.g@mystic.com' }, items: 2, total: 890.00, paymentStatus: 'Pending', fulfillmentStatus: 'Unfulfilled' },
-  { id: 'ORD-8818', date: '2024-05-19 16:20', customer: { name: 'Marcus Aurelius', email: 'marcus@rome.gov' }, items: 5, total: 3200.00, paymentStatus: 'Paid', fulfillmentStatus: 'Delivered' },
-  { id: 'ORD-8817', date: '2024-05-19 09:10', customer: { name: 'Sophia Loren', email: 'sophia@cinema.it' }, items: 1, total: 150.00, paymentStatus: 'Failed', fulfillmentStatus: 'Cancelled' },
-  { id: 'ORD-8816', date: '2024-05-18 21:30', customer: { name: 'David Gandy', email: 'gandy.d@models.uk' }, items: 2, total: 780.00, paymentStatus: 'Paid', fulfillmentStatus: 'Delivered' },
-  { id: 'ORD-8815', date: '2024-05-18 15:45', customer: { name: 'Naomi Campbell', email: 'naomi@runway.com' }, items: 4, total: 2100.00, paymentStatus: 'Paid', fulfillmentStatus: 'Shipped' },
-  { id: 'ORD-8814', date: '2024-05-18 11:20', customer: { name: 'Tom Ford', email: 'tom@ford.com' }, items: 1, total: 950.00, paymentStatus: 'Paid', fulfillmentStatus: 'Delivered' },
-];
+
 
 const AdminOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -100,7 +91,7 @@ const AdminOrders: React.FC = () => {
           <div className="flex items-center gap-4 mb-2">
             <h2 className="text-4xl font-admin-display font-bold text-admin-gold">Orders</h2>
             <span className="px-3 py-1 bg-admin-gold/10 text-admin-gold text-[10px] font-bold uppercase tracking-widest border border-admin-gold/20">
-              {mockOrders.length} Recent
+              {orders.length} Recent
             </span>
           </div>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">Manage customer transactions</p>

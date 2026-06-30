@@ -22,23 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-interface Campaign {
-  id: number;
-  subject: string;
-  recipients: number;
-  sentDate: string;
-  openRate: string;
-  clickRate: string;
-  status: 'Sent' | 'Draft' | 'Scheduled';
-}
 
-const mockCampaigns: Campaign[] = [
-  { id: 1, subject: 'Summer Collection Early Access', recipients: 12450, sentDate: 'May 15, 2024', openRate: '42.5%', clickRate: '12.4%', status: 'Sent' },
-  { id: 2, subject: 'Exclusive VIP Rewards Program', recipients: 850, sentDate: 'May 18, 2024', openRate: '85.2%', clickRate: '34.1%', status: 'Sent' },
-  { id: 3, subject: 'New Arrivals: Obsidian Series', recipients: 15200, sentDate: 'Jun 01, 2024', openRate: '0%', clickRate: '0%', status: 'Scheduled' },
-  { id: 4, subject: 'Your Cart is Waiting...', recipients: 450, sentDate: '-', openRate: '0%', clickRate: '0%', status: 'Draft' },
-  { id: 5, subject: 'Holiday Gift Guide 2024', recipients: 25000, sentDate: 'Dec 01, 2023', openRate: '38.1%', clickRate: '8.2%', status: 'Sent' },
-];
 
 const AdminNewsletters: React.FC = () => {
   const [subscribers, setSubscribers] = useState<any[]>([]);
@@ -70,7 +54,7 @@ const AdminNewsletters: React.FC = () => {
           <div className="flex items-center gap-4 mb-2">
             <h2 className="text-4xl font-admin-display font-bold text-admin-gold">Newsletters</h2>
             <span className="px-3 py-1 bg-admin-gold/10 text-admin-gold text-[10px] font-bold uppercase tracking-widest border border-admin-gold/20">
-              12,450 Subscribers
+              {subscribers.length} Subscribers
             </span>
           </div>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">Engage your audience with curated luxury content</p>
@@ -114,11 +98,8 @@ const AdminNewsletters: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-black/20 border-b border-admin-gold/10">
-                <th className="p-6 text-[10px] uppercase tracking-[0.2em] font-bold text-admin-gold">Campaign Subject</th>
-                <th className="p-6 text-[10px] uppercase tracking-[0.2em] font-bold text-admin-gold">Recipients</th>
-                <th className="p-6 text-[10px] uppercase tracking-[0.2em] font-bold text-admin-gold">Sent Date</th>
-                <th className="p-6 text-[10px] uppercase tracking-[0.2em] font-bold text-admin-gold">Open Rate</th>
-                <th className="p-6 text-[10px] uppercase tracking-[0.2em] font-bold text-admin-gold">Click Rate</th>
+                <th className="p-6 text-[10px] uppercase tracking-[0.2em] font-bold text-admin-gold">Email</th>
+                <th className="p-6 text-[10px] uppercase tracking-[0.2em] font-bold text-admin-gold">Subscribed On</th>
                 <th className="p-6 text-[10px] uppercase tracking-[0.2em] font-bold text-admin-gold">Status</th>
                 <th className="p-6 text-[10px] uppercase tracking-[0.2em] font-bold text-admin-gold text-right">Actions</th>
               </tr>
@@ -149,40 +130,19 @@ const AdminNewsletters: React.FC = () => {
                     </div>
                   </td>
                   <td className="p-6">
-                    <span className="text-xs opacity-60">1</span>
-                  </td>
-                  <td className="p-6">
                     <span className="text-[10px] uppercase tracking-widest opacity-40">{new Date(sub.created_at).toLocaleDateString()}</span>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex items-center gap-2">
-                      <Eye size={12} className="text-admin-gold/40" />
-                      <span className="text-xs font-bold">100%</span>
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex items-center gap-2">
-                      <MousePointer2 size={12} className="text-admin-gold/40" />
-                      <span className="text-xs font-bold">0%</span>
-                    </div>
                   </td>
                   <td className="p-6">
                     <span className={cn(
                       "text-[9px] uppercase tracking-widest font-bold px-3 py-1 border",
-                      sub.status === 'Active' ? "bg-admin-success/5 border-admin-success/20 text-admin-success" :
+                      sub.status === 'Active' || !sub.status ? "bg-admin-success/5 border-admin-success/20 text-admin-success" :
                       "bg-white/5 border-white/10 text-admin-ivory/40"
                     )}>
-                      {sub.status}
+                      {sub.status || 'Active'}
                     </span>
                   </td>
                   <td className="p-6 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 hover:bg-admin-gold/10 text-admin-gold/40 hover:text-admin-gold transition-all" title="Edit">
-                        <Edit size={16} />
-                      </button>
-                      <button className="p-2 hover:bg-admin-gold/10 text-admin-gold/40 hover:text-admin-gold transition-all" title="View Report">
-                        <BarChart3 size={16} />
-                      </button>
                       <button className="p-2 hover:bg-admin-danger/10 text-admin-gold/40 hover:text-admin-danger transition-all" title="Delete">
                         <Trash2 size={16} />
                       </button>

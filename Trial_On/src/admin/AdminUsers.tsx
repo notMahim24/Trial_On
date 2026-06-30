@@ -25,10 +25,10 @@ import {
 import { cn } from '../lib/utils';
 
 interface Customer {
-  id: number;
+  id: string;
   name: string;
   email: string;
-  role: 'Customer' | 'VIP' | 'Admin' | 'Editor';
+  role: string;
   status: 'Active' | 'Suspended' | 'Inactive';
   totalSpend: number;
   ordersCount: number;
@@ -36,21 +36,38 @@ interface Customer {
   avatar?: string;
 }
 
-const mockCustomers: Customer[] = [
-  { id: 1, name: 'Julianne Moore', email: 'j.moore@example.com', role: 'VIP', status: 'Active', totalSpend: 12450.00, ordersCount: 12, lastActive: '2 hours ago' },
-  { id: 2, name: 'Alexander Wang', email: 'wang.a@example.com', role: 'Customer', status: 'Active', totalSpend: 450.00, ordersCount: 1, lastActive: '1 day ago' },
-  { id: 3, name: 'Elena Gilbert', email: 'elena.g@mystic.com', role: 'Customer', status: 'Inactive', totalSpend: 890.00, ordersCount: 2, lastActive: '3 weeks ago' },
-  { id: 4, name: 'Marcus Aurelius', email: 'marcus@rome.gov', role: 'VIP', status: 'Active', totalSpend: 32000.00, ordersCount: 45, lastActive: 'Just now' },
-  { id: 5, name: 'Sophia Loren', email: 'sophia@cinema.it', role: 'Customer', status: 'Suspended', totalSpend: 150.00, ordersCount: 1, lastActive: '2 months ago' },
-  { id: 6, name: 'David Gandy', email: 'gandy.d@models.uk', role: 'VIP', status: 'Active', totalSpend: 7800.00, ordersCount: 8, lastActive: '5 hours ago' },
-  { id: 7, name: 'Naomi Campbell', email: 'naomi@runway.com', role: 'VIP', status: 'Active', totalSpend: 21000.00, ordersCount: 15, lastActive: '12 hours ago' },
-  { id: 8, name: 'Tom Ford', email: 'tom@ford.com', role: 'Admin', status: 'Active', totalSpend: 0.00, ordersCount: 0, lastActive: 'Active now' },
-];
-
 const AdminUsers: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const res = await fetch('/api/profiles');
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        const mappedData = data.map((profile: any) => ({
+          id: profile.id,
+          name: profile.name || profile.email.split('@')[0],
+          email: profile.email,
+          role: profile.role === 'admin' ? 'Admin' : 'Customer',
+          status: 'Active',
+          totalSpend: 0,
+          ordersCount: 0,
+          lastActive: new Date(profile.created_at).toLocaleDateString()
+        }));
+        setCustomers(mappedData);
+      } catch (err) {
+        console.error("Error fetching customers:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCustomers();
+  }, []);
 
   const openProfile = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -65,7 +82,7 @@ const AdminUsers: React.FC = () => {
           <div className="flex items-center gap-4 mb-2">
             <h2 className="text-4xl font-admin-display font-bold text-admin-gold">Customers</h2>
             <span className="px-3 py-1 bg-admin-gold/10 text-admin-gold text-[10px] font-bold uppercase tracking-widest border border-admin-gold/20">
-              {mockCustomers.length} Total
+              {customers.length} Total
             </span>
           </div>
           <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30">Manage your clientele and access levels</p>
@@ -126,7 +143,13 @@ const AdminUsers: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-gold/5">
-              {mockCustomers.map((customer, idx) => (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={9} className="p-6 text-center text-admin-gold/40 text-xs uppercase tracking-widest">
+                    Loading users...
+                  </td>
+                </tr>
+              ) : customers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.email.toLowerCase().includes(searchQuery.toLowerCase())).map((customer, idx) => (
                 <motion.tr 
                   key={customer.id}
                   initial={{ opacity: 0, x: -10 }}
@@ -140,7 +163,7 @@ const AdminUsers: React.FC = () => {
                   <td className="p-6">
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => openProfile(customer)}>
                       <div className="w-10 h-10 rounded-full bg-admin-gold/10 flex items-center justify-center text-admin-gold font-bold border border-admin-gold/20 group-hover:border-admin-gold transition-colors">
-                        {customer.name.charAt(0)}
+                        {customer.name.charAt(0).toUpperCase()}
                       </div>
                       <p className="text-sm font-bold group-hover:text-admin-gold transition-colors">{customer.name}</p>
                     </div>

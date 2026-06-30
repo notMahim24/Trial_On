@@ -8,11 +8,11 @@ import subprocess
 import sys
 
 AI_DIR = os.path.join(os.path.dirname(__file__), "AI_FASHION_ASSISSTANT-NEW")
-VENV_PYTHON = os.path.join(AI_DIR, ".venv", "Scripts", "python.exe")
+VENV_PYTHON = os.path.join(AI_DIR, ".venv", "bin", "python") if sys.platform != "win32" else os.path.join(AI_DIR, ".venv", "Scripts", "python.exe")
 
 if not os.path.exists(VENV_PYTHON):
     print(f"ERROR: Virtual environment not found at {VENV_PYTHON}")
-    print("Please run: cd AI_FASHION_ASSISSTANT-NEW && python -m venv .venv && .venv\\Scripts\\pip install -r requirements.txt")
+    print(f"Please run: cd AI_FASHION_ASSISSTANT-NEW && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt")
     sys.exit(1)
 
 print(f"[AI] Starting Uvicorn with {VENV_PYTHON}")

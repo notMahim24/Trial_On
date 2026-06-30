@@ -12,11 +12,17 @@ python-dotenv
 python-multipart
 
 # ==============================
-# AI / ML / LLM DEPENDENCIES
 # ==============================
-langchain-mistralai
+# AI & ML MODELS
+# ==============================
 torch
 torchvision
 pillow
 git+https://github.com/openai/CLIP.git
-streamlit
+langchain
+langchain-mistralai
+requests
+supabase
+langgraph
+langchain-openai
+

@@ -14,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
+  updateUser: (updates: Partial<User>) => void;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -32,53 +33,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || 'admin@zelori.com';
-    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
-    // Simulate API call
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        // Special case for admin login
-        if (email === adminEmail && password === adminPassword) {
-          const adminUser: User = {
-            id: 'admin-1',
-            email: adminEmail,
-            name: 'Admin',
-            role: 'admin'
-          };
-          setUser(adminUser);
-          localStorage.setItem('veston_user', JSON.stringify(adminUser));
-          resolve();
-        } else if (email && password) {
-          const regularUser: User = {
-            id: 'user-' + Math.random().toString(36).substr(2, 9),
-            email: email,
-            name: email.split('@')[0],
-            role: 'user'
-          };
-          setUser(regularUser);
-          localStorage.setItem('veston_user', JSON.stringify(regularUser));
-          resolve();
-        } else {
-          reject(new Error('Invalid credentials'));
-        }
-      }, 800);
-    });
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Invalid credentials');
+      }
+      
+      setUser(data.user);
+      localStorage.setItem('veston_user', JSON.stringify(data.user));
+    } catch (err) {
+      console.error("Login Error:", err);
+      throw err;
+    }
   };
 
   const signup = async (name: string, email: string, password: string) => {
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        const newUser: User = {
-          id: 'user-' + Math.random().toString(36).substr(2, 9),
-          email,
-          name,
-          role: 'user'
-        };
-        setUser(newUser);
-        localStorage.setItem('veston_user', JSON.stringify(newUser));
-        resolve();
-      }, 800);
-    });
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+      const data = await res.json();
+      
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Signup failed');
+      }
+      
+      setUser(data.user);
+      localStorage.setItem('veston_user', JSON.stringify(data.user));
+    } catch (err) {
+      console.error("Signup Error:", err);
+      throw err;
+    }
   };
 
   const logout = () => {
@@ -86,11 +79,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('veston_user');
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
+      localStorage.setItem('veston_user', JSON.stringify(updatedUser));
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
       login, 
       signup, 
+      updateUser,
       logout, 
       isAuthenticated: !!user,
       isAdmin: user?.role === 'admin'

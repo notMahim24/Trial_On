@@ -255,7 +255,7 @@ function MainApp() {
   const [isBuyNowSubmitting, setIsBuyNowSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -924,12 +924,6 @@ function MainApp() {
                             ))}
                           </div>
                         </div>
-                        <div className="mt-6 flex gap-4">
-                          <button onClick={() => showNotification("Receipt downloaded.", "success")} className="text-[9px] uppercase tracking-[0.2em] font-bold border border-black/10 px-4 py-2 hover:bg-black/5 transition-colors">Download Receipt</button>
-                          {order.status === 'Delivered' && (
-                            <button onClick={() => showNotification("Initiating return flow...", "info")} className="text-[9px] uppercase tracking-[0.2em] font-bold border border-transparent text-black/40 hover:text-black transition-colors">Return Item</button>
-                          )}
-                        </div>
                       </div>
                     ))}
                     <button className="w-full py-4 border border-black/10 text-[10px] uppercase tracking-widest font-bold hover:bg-black hover:text-white transition-all">
@@ -1292,7 +1286,7 @@ function MainApp() {
                             <input
                               type="range"
                               min="0"
-                              max="1000"
+                              max="10000"
                               step="50"
                               value={priceRange[1]}
                               onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
@@ -1358,7 +1352,7 @@ function MainApp() {
                       <div className="flex justify-end mt-4">
                         <button
                           onClick={() => {
-                            setPriceRange([0, 1000]);
+                            setPriceRange([0, 10000]);
                             setSelectedColors([]);
                             setSelectedSizes([]);
                           }}
@@ -1420,7 +1414,7 @@ function MainApp() {
                     <button onClick={() => {
                       setSearchQuery('');
                       setActiveCategory('All');
-                      setPriceRange([0, 1000]);
+                      setPriceRange([0, 10000]);
                       setSelectedColors([]);
                       setSelectedSizes([]);
                     }} className="mt-4 text-sm font-semibold uppercase tracking-widest border-b border-brand-bg pb-1">Reset Filters</button>
@@ -1667,9 +1661,7 @@ function MainApp() {
                       <span className="text-sm font-bold opacity-60">4.9 / 5.0  (128 Reviews)</span>
                     </div>
                   </div>
-                  <button onClick={() => showNotification("Review submissions are currently closed.", "info")} className="text-[10px] uppercase tracking-widest font-bold border-b border-black pb-1 hover:opacity-50 transition-opacity">
-                    Write a Review
-                  </button>
+                  {/* Removed dummy write a review button */}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -1883,8 +1875,8 @@ function MainApp() {
             <h5 className="text-[10px] uppercase tracking-[0.5em] font-bold text-brand-accent mb-12">Maison</h5>
             <ul className="space-y-6 text-[10px] uppercase tracking-[0.2em] text-white/50">
               <li><Link to="/services" className="hover:text-white transition-colors duration-300">Our Heritage</Link></li>
-              <li><button onClick={() => showNotification('Global White-Glove Shipping', 'info')} className="hover:text-white transition-colors duration-300">Shipping & Delivery</button></li>
-              <li><button onClick={() => showNotification('Bespoke Return Service', 'info')} className="hover:text-white transition-colors duration-300">Returns & Exchanges</button></li>
+              <li><Link to="/services" className="hover:text-white transition-colors duration-300">Shipping & Delivery</Link></li>
+              <li><Link to="/services" className="hover:text-white transition-colors duration-300">Returns & Exchanges</Link></li>
               <li><Link to="/contact" className="hover:text-white transition-colors duration-300">Private Concierge</Link></li>
             </ul>
           </div>
